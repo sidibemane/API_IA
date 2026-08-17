@@ -1,0 +1,918 @@
+================================================================================
+RÈGLES MÉTIER - GESTION ADMINISTRATIVE DES AGENTS DE L'ÉTAT (SÉNÉGAL)
+Extraites des actes administratifs de la Fonction Publique
+================================================================================
+Source : Actes du Ministère de la Fonction publique, du Travail et de la Réforme du Service public
+================================================================================
+SECTION 1 - CADRE JURIDIQUE GÉNÉRAL
+================================================================================
+RÈGLE J-01 : Textes de référence selon le statut de l'agent
+- Agents NON FONCTIONNAIRES (NF) :
+* Loi n°97-17 du 1er décembre 1997 portant Code du travail, modifiée
+* Décret n°74-347 du 12 avril 1974 fixant le régime spécial applicable
+aux agents non fonctionnaires de l'État, modifié
+- Agents FONCTIONNAIRES (FONCT) :
+* Loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée
+* Décret portant statut particulier du cadre concerné
+(ex : Décret n°77-987 du 14 novembre 1977 pour les fonctionnaires de l'Enseignement)
+
+RÈGLE J-02 : Autorité compétente pour signer les actes et en-tête obligatoire
+- L'autorité signataire de tous les arrêtés et décisions doit être typographiée 
+  exactement comme suit (en majuscules, avec la virgule finale) :
+  LE MINISTRE DE LA FONCTION PUBLIQUE, DU
+ TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+
+- Tout acte administratif doit obligatoirement comporter, en haut de page, l'en-tête 
+  officiel suivant (dans cet ordre exact et avec cette orthographe immuable) :
+  REPUBLIQUE DU SENEGAL
+  Un Peuple - Un But - Une Foi
+  Ministère de la Fonction publique, du
+  Travail et de la Réforme du Service public
+  SSMD
+
+- Précision sur l'en-tête : Les éléments "REPUBLIQUE DU SENEGAL", 
+  "Un Peuple - Un But - Une Foi" et "Ministère de la Fonction publique, du 
+  Travail et de la Réforme du Service public" sont strictement invariables et 
+  ne doivent jamais être modifiés. La mention "SSMD" (initiales du créateur du 
+  projet) doit figurer en bas de cet en-tête ; elle peut varier ou être adaptée 
+  selon l'acte, mais la structure des trois lignes principales reste obligatoire 
+  et inchangée.
+- Toute variation dans le nom du Ministère (ex : "Ministère de la Fonction Publique 
+  et de la Réforme du Service Public" sans "du Travail") constitue une erreur à signaler.
+- La devise nationale "Un Peuple - Un But - Une Foi" est obligatoire entre 
+  "REPUBLIQUE DU SENEGAL" et le nom du Ministère.
+
+RÈGLE J-03 : Forme des actes selon leur nature
+- Avancement d'échelon        → acte appelé "DÉCISION/ARRÊTÉ" (FONCT et NF)
+- Avancement de grade (NF)    → acte appelé "DÉCISION"
+- Avancement de grade (FONCT) → acte appelé "ARRÊTÉ"
+- Nomination/Titularisation   → acte appelé "ARRÊTÉ"
+- Disponibilité               → acte appelé "ARRÊTÉ"
+- Retraite (FONCT)            → acte appelé "ARRÊTÉ"
+- Retraite (NF)               → acte appelé "DÉCISION"
+- Radiation pour abandon (FONCT) → acte appelé "ARRÊTÉ"
+- Radiation pour abandon (NF)    → acte appelé "DÉCISION"
+Note : Le terme "DÉCISION" est utilisé pour les actes d'avancement (échelon et grade)
+des agents NON FONCTIONNAIRES (NF).
+Le terme "ARRÊTÉ" est utilisé pour tous les actes concernant les FONCTIONNAIRES
+ainsi que pour les actes de cessation de fonctions (retraite, disponibilité, radiation).
+
+================================================================================
+SECTION 2 - STRUCTURE DE LA CARRIÈRE
+================================================================================
+RÈGLE C-01 : Identification d'un agent
+Chaque agent est identifié par :
+- Un matricule de solde (identifiant unique)
+- Un corps (ex : JURISTES NF, PROFESSEURS DE CEM, INSTITUTEURS ADJOINTS, ...)
+- Une hiérarchie (ex : A2, A3, B1, B2, C2, C3, D1, ...)
+- Un grade composé de : Classe (Première Classe (1CL), Deuxième Classe (2CL), Troisième Classe (3CL), Quatrième Classe (4CL),...) + Échelon (Premier Échelon (1ECH), Deuxième Échelon (2ECH), Troisième Échelon (3ECH), Quatrième Échelon (4ECH), ...)
+- Une date d'effet associée à chaque situation
+
+RÈGLE C-02 : Hiérarchie des catégories
+AS > A1 > A2 > A3 > B1 > B2 > C2 > C3 > D1 (du plus élevé au moins élevé)
+
+RÈGLE C-03 : Progression de carrière possible
+- Avancement d'échelon   : progression au sein de la même classe (ex : Deuxième Classe (2CL) Premier Échelon (1ECH) → Deuxième Classe (2CL) Deuxième Échelon (2ECH))
+- Avancement de grade    : changement de classe (ex : Deuxième Classe (2CL) → Première Classe (1CL)) ou de niveau
+- Nomination/Titularisation et reclassement : intégration dans un nouveau corps avec grade de départ, changement hiérarchies
+
+================================================================================
+SECTION 3 - AVANCEMENT D'ÉCHELON
+================================================================================
+RÈGLE AE-01 : Définition
+L'avancement d'échelon (avancement automatique) est le passage de l'agent à l'échelon immédiatement supérieur
+au sein de sa classe actuelle, constaté tant du point de vue de la solde que de
+l'ancienneté.
+
+RÈGLE AE-02 : Délai entre deux échelons pour agents NON FONCTIONNAIRES (NF) — hiérarchies B, C, D
+Délai = 2 ans (24 mois) pour les hiérarchies B, C et D ainsi que pour les classes
+inférieures (Deuxième Classe (2CL), Troisième Classe (3CL), Quatrième Classe (4CL)) des NF de hiérarchie A.
+Exemples observés :
+- Agent NF B1 (REF) : Quatrième Classe (4CL) Premier Échelon (1ECH) (30/07/2020) → Quatrième Classe (4CL) Deuxième Échelon (2ECH) (30/07/2022) = 2 ans
+- Agent NF A3       : Troisième Classe (3CL) Premier Échelon (1ECH) (20/12/2017) → Troisième Classe (3CL) Deuxième Échelon (2ECH) (20/12/2019) = 2 ans
+- Agent NF A2       : Quatrième Classe (4CL) Premier Échelon (1ECH) (17/03/2017) → Quatrième Classe (4CL) Deuxième Échelon (2ECH) (17/03/2019) = 2 ans
+- Agent NF D1       : Deuxième Classe (2CL) Troisième Échelon (3ECH) (18/04/2020) → Deuxième Classe (2CL) Quatrième Échelon (4ECH) (18/04/2022) = 2 ans
+Règle : Date_effet_nouvel_échelon = Date_effet_ancien_échelon + 2 ans
+
+CORRECTION — RÈGLE AE-02b : Exception NF hiérarchie A (et AS) en 1ère Classe (Première Classe (1CL))
+Pour les agents NF de hiérarchie A (A1, A2, A3) OU AS placés en Première Classe (1CL), le délai est de 3 ans.
+
+[CORRECTION v7] La hiérarchie AS (ex : Médecins, Pharmaciens, Chirurgiens Dentistes) était
+listée dans la RÈGLE C-02 (hiérarchie des catégories : "AS > A1 > A2 > A3 > ...") mais absente
+de cette règle AE-02b, ce qui provoquait un rejet à tort des actes concernant ces corps (délai
+2 ans appliqué au lieu de 3 ans). Corrigé ici à partir de la table de référence
+corps_classe_echelon.csv, qui confirme sans ambiguïté 3 ans pour ce cas (corps 31006 —
+MEDECINS, PHARMACIENS, CHIRURGIENS DENTISTES NF REF, transition 1CL/2ECH → CEX).
+
+Exemples observés :
+- Agent NF A3 (SOCIO-ECONOMISTE NF) : Première Classe (1CL) Premier Échelon (1ECH) (16/08/2018) → Première Classe (1CL) Deuxième Échelon (2ECH) (16/08/2021) = 3 ans
+- Agent NF AS (MEDECINS, PHARMACIENS, CHIRURGIENS DENTISTES NF REF) : Première Classe (1CL) Deuxième Échelon (2ECH) (19/06/2014) → Classe Exceptionnelle (CEX) (19/06/2017) = 3 ans
+Règle : Pour NF hiérarchie A ou AS en Première Classe (1CL) → Date_effet = Date_ancienne + 3 ans
+Synthèse NF hiérarchie A et AS :
+- Quatrième Classe (4CL), Troisième Classe (3CL), Deuxième Classe (2CL) : délai 2 ans (sauf exception ci-dessous)
+- Première Classe (1CL)            : délai 3 ans
+
+[NOTE v7 — À VÉRIFIER CORPS PAR CORPS] La table corps_classe_echelon.csv montre au moins un
+corps (81002 — INGENIEURS INFORMATICIENS NF, hiérarchie interne "1_SG") où la Deuxième Classe
+(2CL) est ÉGALEMENT à 3 ans, et pas 2 ans comme la synthèse ci-dessus le généralise pour
+"hiérarchie A". Cette règle écrite reste donc une APPROXIMATION valable dans la majorité des
+cas observés ; pour un résultat garanti exact, consulter directement corps_classe_echelon.csv
+pour le corps concerné (c'est ce que fait désormais le moteur de vérification en priorité,
+via get_delai_reglementaire_v2, qui ne retombe sur cette règle écrite qu'en dernier recours,
+si le corps n'existe pas dans la table).
+
+RÈGLE AE-03 : Délai entre deux échelons pour agents FONCTIONNAIRES (FONCT)
+Délai standard = 3 ans (36 mois) — observé sur les hiérarchies B (classes Deuxième Classe (2CL) et Première Classe (1CL))
+Exemples observés (PROFESSEURS CEM B2) :
+- Troisième Classe (3CL) Deuxième Échelon (2ECH) (10/03/2017) → Deuxième Classe (2CL) Premier Échelon (1ECH) (10/03/2020) = 3 ans
+- Troisième Classe (3CL) Deuxième Échelon (2ECH) (10/07/2017) → Deuxième Classe (2CL) Premier Échelon (1ECH) (10/07/2020) = 3 ans
+- Troisième Classe (3CL) Deuxième Échelon (2ECH) (08/08/2017) → Deuxième Classe (2CL) Premier Échelon (1ECH) (08/08/2020) = 3 ans
+Règle : Date_effet_nouvel_échelon = Date_effet_ancien_échelon + 3 ans
+(Se référer aux grilles détaillées Sections 10 et 11 pour les délais par classe)
+
+RÈGLE AE-04 : Conservation du jour et du mois lors de l'avancement d'échelon
+Le jour et le mois de la date d'effet sont identiques à la situation précédente.
+Seule l'année change (+ délai applicable).
+Exemple : 18/04/2020 → 18/04/2022 (le 18/04 est conservé)
+
+RÈGLE AE-05 : Formulation officielle de l'acte d'avancement d'échelon
+"Est constaté, comme suit, tant du point de vue de la solde que de l'ancienneté,
+l'avancement à l'échelon supérieur de [Civilité] [Prénom NOM], matricule de solde n°[XXXXXX]"
+
+RÈGLE AE-06 : Contenu obligatoire du tableau de l'acte d'avancement d'échelon
+Colonnes requises : Corps | Hiérarchie | Ancienne situation (Grade + Date d'effet) |
+Nouvelle situation (Grade + Date d'effet)
+
+================================================================================
+SECTION 4 - AVANCEMENT DE GRADE
+================================================================================
+RÈGLE AG-01 : Définition
+L'avancement de grade est la promotion de l'agent à la classe immédiatement supérieure
+(ex : passage de Deuxième Classe (2CL) à Première Classe (1CL), ou de Troisième Classe (3CL) à Deuxième Classe (2CL)).
+
+RÈGLE AG-02 : Progression des échelons après avancement de grade (NON FONCTIONNAIRES)
+Après avancement de grade, l'agent commence à l'échelon 1 de la nouvelle classe,
+puis progresse de 2 ans en 2 ans.
+Exemple (Agent E, COMMIS D'ADMINISTRATION C3 NF) :
+Ancienne situation : Deuxième Classe (2CL) Quatrième Échelon (4ECH) au 15/01/2009
+Nouvelle situation :
+Première Classe (1CL) Premier Échelon (1ECH) → 15/01/2011  (= date_grade + 2 ans)
+Première Classe (1CL) Deuxième Échelon (2ECH) → 15/01/2013  (= Première Classe (1CL) Premier Échelon (1ECH) + 2 ans)
+Première Classe (1CL) Troisième Échelon (3ECH) → 15/01/2015  (= Première Classe (1CL) Deuxième Échelon (2ECH) + 2 ans)
+Règle : la date d'effet du Première Classe (1CL) Premier Échelon (1ECH) = date_ancienne_situation + 2 ans
+
+RÈGLE AG-03 : Progression des échelons après avancement de grade (FONCTIONNAIRES B2)
+Après avancement de grade, l'agent commence à l'échelon 1 de la nouvelle classe,
+puis progresse de 3 ans en 3 ans.
+Exemple (Agent F, PROFESSEURS CEM B2) :
+Ancienne situation : Troisième Classe (3CL) Deuxième Échelon (2ECH) au 10/03/2017
+Nouvelle situation :
+Deuxième Classe (2CL) Premier Échelon (1ECH) → 10/03/2020  (= date_ancienne + 3 ans)
+Deuxième Classe (2CL) Deuxième Échelon (2ECH) → 10/03/2023  (= Deuxième Classe (2CL) Premier Échelon (1ECH) + 3 ans)
+
+RÈGLE AG-04 : Formulation officielle de l'acte d'avancement de grade (NON FONCTIONNAIRES)
+"Est prononcée, comme suit, la promotion au grade supérieur dans l'emploi des [CORPS],
+hiérarchie [X], de [Civilité] [Prénom NOM], matricule de solde n°[XXXXXX]"
+
+RÈGLE AG-05 : Formulation officielle de l'acte d'avancement de grade (FONCTIONNAIRES)
+"Est prononcée, comme suit, la promotion au grade supérieur des [CORPS], hiérarchie [X],
+dont les noms suivent :" (liste de plusieurs agents possible dans un seul arrêté)
+
+RÈGLE AG-06 : Contenu obligatoire du tableau de l'acte d'avancement de grade
+Colonnes requises : Ancienne situation (Grade + Date d'effet) |
+Nouvelle situation (Grade + Date d'effet) — avec plusieurs lignes
+si plusieurs échelons sont projetés
+
+================================================================================
+SECTION 5 - NOMINATION ET TITULARISATION
+================================================================================
+RÈGLE NT-01 : Définition
+La nomination et titularisation est l'acte par lequel un agent
+est intégré définitivement dans un corps de la Fonction Publique avec un grade de départ.
+
+RÈGLE NT-02 : Conditions de nomination dans un corps
+L'agent doit être titulaire d'un diplôme ou certificat reconnu correspondant au corps.
+Exemple : CEAP (Certificat Élémentaire d'Aptitude Pédagogique) → corps INSTITUTEURS ADJOINTS
+La session d'obtention du diplôme doit être précisée dans l'acte.
+
+RÈGLE NT-03 : Grade de départ après nomination
+L'agent est nommé à la 2ème Classe (Deuxième Classe (2CL)), 1er Échelon (Premier Échelon (1ECH)) du corps concerné.
+Exemple : Agent G → Deuxième Classe (2CL) Premier Échelon (1ECH) à partir du 01/10/2018
+
+RÈGLE NT-04 : Contenu obligatoire de l'acte de nomination
+- Nom, prénom, date et lieu de naissance de l'agent
+- Catégorie d'origine (ex : MAÎTRES CONTRACTUELS)
+- Diplôme ou certificat détenu + session d'obtention
+- Corps d'intégration + hiérarchie
+- Grade de départ + date d'effet
+
+================================================================================
+SECTION 6 - VALIDATION D'ANCIENNETÉ
+================================================================================
+RÈGLE VA-01 : Définition
+La validation d'ancienneté permet de prendre en compte, pour l'avancement, les périodes
+de service effectuées avant son engagement/titularisation (vacation, volontariat, contrat).
+
+RÈGLE VA-02 : Base légale
+Décret n°2015-583 du 11 mai 2015 (régissant la validation d'ancienneté).
+
+RÈGLE VA-03 : Taux de validation
+L'ancienneté validée = 2/3 de la durée totale de la période à valider.
+Exemple (Agent G) :
+Ancienneté totale à valider : 5 mois 14 jours
+Ancienneté validée aux 2/3  : 3 mois 19 jours
+
+RÈGLE VA-04 : Types de périodes pouvant être validées
+- Période de vacation / volontariat
+- Période contractuelle
+
+RÈGLE VA-05 : Effet de la validation sur la situation administrative
+L'ancienneté validée est conservée et utilisée pour accélérer l'avancement d'échelon
+et de grade. Elle est portée dans la colonne "Ancienneté conservée" du tableau de
+régularisation.
+Exemple :
+Deuxième Classe (2CL) Premier Échelon (1ECH) (01/10/2018) avec ancienneté conservée 3m19j
+→ Deuxième Classe (2CL) Deuxième Échelon (2ECH) (12/06/2020) → date calculée en tenant compte des 3m19j d'avance
+→ Deuxième Classe (2CL) Troisième Échelon (3ECH) (12/06/2022) → ancienneté épuisée
+
+RÈGLE VA-06 : Contenu du tableau de régularisation suite à la validation
+Colonnes : Ancienne situation (Grade + Date d'effet + Ancienneté conservée) |
+Nouvelle situation (Grade + Date d'effet + Ancienneté conservée)
+La colonne "Ancienneté conservée" indique "Anc. épuisée" quand le crédit est nul.
+
+================================================================================
+SECTION 7 - RÈGLES DE COHÉRENCE ET DE VALIDATION DES ACTES
+================================================================================
+RÈGLE V-01 : Cohérence statut / loi de référence
+Un acte concernant un agent NON FONCTIONNAIRE DOIT citer par défaut pour les cas non spécifiques :
+✔ Loi n°97-17 du 1er décembre 1997 portant Code du travail
+✔ Décret n°74-347 du 12 avril 1974
+Un acte concernant un FONCTIONNAIRE DOIT citer :
+✔ Loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires
+✔ Le décret portant statut particulier du cadre concerné
+✔ En plus de ces règles, parfois nous avons aussi des visas qui sont spécifiques à chaque corps
+
+RÈGLE V-02 : Cohérence corps / hiérarchie
+Chaque corps appartient à une hiérarchie fixe. Une incohérence entre le corps
+mentionné et la hiérarchie indiquée dans l'acte constitue une erreur.
+Exemples validés :
+JURISTES NF                         → A3
+STATISTICIEN NF                     → A2
+COMMIS D'ADMINISTRATION C3 NF       → C3
+PROFESSEURS DE CEM                  → B2
+INSTITUTEURS ADJOINTS               → C2
+CHAUFFEUR ET CONDUCTEUR D'ENGINS TP NF → D1
+
+RÈGLE V-03 : Cohérence du délai d'avancement d'échelon
+La différence entre la date d'effet de la nouvelle situation et celle de l'ancienne
+situation doit être égale au délai réglementaire applicable selon le statut, le corps, la
+hiérarchie ET la classe de l'agent :
+- NF hiérarchies B (B1, B2), C, D (toutes classes)  : 2 ans
+- NF hiérarchie A (classes Deuxième Classe (2CL), Troisième Classe (3CL), Quatrième Classe (4CL))  : 2 ans
+- NF hiérarchie A (classe Première Classe (1CL))              : 3 ans  ← exception
+- NF hiérarchie B3 (toutes classes)                           : 2 ans  ← toutes classes à 2 ans
+- FONCTIONNAIRES classes Quatrième Classe (4CL) et Troisième Classe (3CL)         : 2 ans  (Instituteurs, certains Professeurs)
+- FONCTIONNAIRES classes Deuxième Classe (2CL) et Première Classe (1CL)         : 3 ans  (Professeurs, Instituteurs Première Classe (1CL))
+Toute différence avec le délai attendu constitue une anomalie à signaler.
+Un acte NF hiérarchie A avec délai 2 ans en Première Classe (1CL) est ERRONÉ.
+Un acte hiérarchie B3 avec délai 3 ans, quelle que soit la classe, est ERRONÉ.
+
+RÈGLE V-04 : Cohérence lors d'un avancement de grade
+Lors d'un avancement de grade, la nouvelle classe doit être immédiatement supérieure
+à l'ancienne (ex : Troisième Classe (3CL) → Deuxième Classe (2CL), ou Deuxième Classe (2CL) → Première Classe (1CL)). Un saut de classe n'est pas autorisé.
+
+RÈGLE V-05 : Unicité du matricule de solde
+Chaque agent possède un matricule de solde unique. Un même matricule ne peut
+correspondre qu'à un seul agent.
+
+RÈGLE V-06 : Présence obligatoire des mentions légales
+Tout acte doit mentionner :
+✔ L'en-tête officiel complet (voir RÈGLE J-02) :
+  REPUBLIQUE DU SENEGAL
+  Un Peuple - Un But - Une Foi
+  Ministère de la Fonction publique, du
+  Travail et de la Réforme du Service public
+  [Initiales du créateur du projet, ex: SSMD]
+✔ L'objet de l'acte
+✔ Les références juridiques (Vu...)
+✔ La mention "Vu le dossier de l'intéressé(e)"
+✔ L'article premier (décision principale)
+✔ L'article de publication finale
+
+RÈGLE V-07 : Formule de clôture obligatoire
+Tout acte doit se terminer par :
+"La présente décision/Le présent arrêté sera enregistré(e), publié(e) et communiqué(e)
+partout où besoin sera."
+
+================================================================================
+SECTION 8 - GLOSSAIRE DES TERMES ET ABRÉVIATIONS UTILISÉS DANS LES ACTES
+================================================================================
+Ce glossaire explique tous les termes techniques utilisés dans les actes administratifs
+de gestion du personnel de la Fonction Publique sénégalaise.
+
+TERME "CLASSE" :
+La classe (ou grade) désigne le niveau hiérarchique d'un agent au sein de son corps.
+Elle correspond à une étape dans la progression de carrière. Les classes sont numérotées
+du plus bas au plus élevé pour les hiérarchies A et B, et s'appellent ainsi :
+- Quatrième Classe (4CL)  : classe de départ la plus basse (sauf Stagiaire)
+- Troisième Classe (3CL)  : deuxième niveau
+- Deuxième Classe (2CL)   : troisième niveau
+- Première Classe (1CL)   : quatrième niveau (niveau élevé)
+- Classe Principale (PPL) : cinquième niveau (noté PPL dans la base de données)
+- Classe Exceptionnelle (CEX) : niveau le plus élevé avant la fin de carrière
+- Principale de Classe Exceptionnelle (PPL CEX) : dernier niveau absolu de certains corps
+Pour les hiérarchies C et D, la progression commence directement à la Deuxième Classe (2CL).
+
+TERME "CLASSE PRINCIPALE" (PPL dans la base de données) :
+La Classe Principale (PPL) est le niveau intermédiaire entre la Première Classe (1CL) et la
+Classe Exceptionnelle (CEX). Elle est présente dans les grilles des corps de catégories
+C et D (hiérarchies C1 à D4). Elle comporte 3 échelons (Premier, Deuxième et Troisième).
+Dans les actes officiels, elle est écrite "Classe Principale (PPL)" ou abrégée "PPL"
+dans les systèmes informatiques.
+
+TERME "CLASSE EXCEPTIONNELLE" (CEX dans la base de données) :
+La Classe Exceptionnelle (CEX) est le niveau de fin de carrière le plus élevé de certains corps.
+Elle est accessible uniquement par compétition depuis le dernier échelon de la Première Classe (1CL)
+(pour les hiérarchies A et B) ou depuis la Classe Principale (PPL) (pour les hiérarchies C et D).
+Elle ne comporte pas d'échelon numéroté dans certains corps, ou peut avoir 1 à 2 échelons.
+
+TERME "PRINCIPALE DE CLASSE EXCEPTIONNELLE" (PPL CEX dans la base de données) :
+C'est le tout dernier niveau de carrière des corps de catégories C et D. Il succède
+à la Classe Principale (PPL) et constitue le niveau de fin absolue de carrière.
+
+TERME "ÉCHELON" :
+L'échelon désigne la position précise d'un agent à l'intérieur d'une classe.
+Chaque classe comporte un certain nombre d'échelons. L'agent progresse d'un échelon
+au suivant automatiquement après un délai réglementaire (2 ou 3 ans selon le corps).
+Les échelons sont numérotés : Premier Échelon (1ECH), Deuxième Échelon (2ECH), Troisième Échelon (3ECH),
+Quatrième Échelon (4ECH).
+
+TERME "STAGIAIRE" :
+Le stade Stagiaire est une période probatoire de 2 ans que certains corps de
+fonctionnaires doivent obligatoirement traverser avant d'être titularisés dans
+la Quatrième Classe (4CL). La titularisation (passage Stagiaire → Quatrième Classe (4CL))
+se fait par compétition (décision administrative).
+
+TERME "FIN DE GRADE" (cce_fin_grade=1 dans la base de données) :
+Indique que l'échelon concerné est le dernier de sa classe. Une fois cet échelon
+atteint et la durée réglementaire écoulée, l'agent peut accéder à la classe
+supérieure uniquement par compétition (avancement de grade).
+
+TERME "FIN D'ÉCHELON" (cce_fin_echelon=1 dans la base de données) :
+Indique que l'échelon concerné est le tout dernier de toute la carrière de ce corps.
+Il n'y a plus de progression possible après cet échelon. C'est le terminus de la grille.
+
+TERME "COMPÉTITION" :
+Procédure obligatoire pour passer d'une classe à la classe supérieure. Contrairement
+à l'avancement d'échelon qui est automatique (durée écoulée → passage), l'avancement
+de grade (changement de classe) nécessite une décision administrative formelle après
+examen de dossier ou concours selon les corps.
+
+TERME "HIÉRARCHIE" :
+Niveau général de l'agent dans la grille de la Fonction Publique sénégalaise.
+Les hiérarchies sont regroupées par catégories :
+- Catégorie A (les plus élevées) : A1, A2, A3
+- Catégorie B                    : B1, B2, B3, B4
+- Catégorie C                    : C1, C2, C3, C4
+- Catégorie D (les plus basses)  : D1, D2, D3, D4
+
+TERME "CORPS" :
+Ensemble d'agents appartenant à la même spécialité professionnelle et soumis
+aux mêmes règles de progression de carrière. Ex : ADMINISTRATEURS CIVILS,
+INSTITUTEURS ADJOINTS, TECHNICIENS MEDICAUX.
+
+TERME "FONCTIONNAIRE" (FONCT) :
+Agent de l'État relevant du statut général des fonctionnaires (Loi n°61-33 de 1961).
+Bénéficie d'un poste permanent et d'une carrière protégée.
+
+TERME "NON FONCTIONNAIRE" (NF) :
+Agent de l'État ne relevant pas du statut de fonctionnaire mais du régime spécial
+des agents non fonctionnaires (Décret n°74-347 de 1974) et du Code du travail
+(Loi n°97-17 de 1997).
+
+TERME "ENS_FONCT" / "ENS_NON_FONCT" :
+Fonctionnaire ou Non-Fonctionnaire appartenant à un corps de l'Enseignement.
+
+================================================================================
+SECTION 9 - GRILLES OFFICIELLES DE CARRIÈRE PAR PATTERN (SOURCE : BASE DE DONNÉES)
+================================================================================
+Source : Tables corps_classe_echelon, classe, echelon
+8 543 enregistrements — 843 corps — 15 patterns distincts de progression
+Données extraites des fichiers officiels du Ministère de la Fonction publique, du Travail et de la Réforme du Service public
+
+EXPLICATION DU TABLEAU DE GRILLE :
+Chaque ligne du tableau représente une étape dans la carrière de l'agent.
+- "Classe"     : nom complet de la classe (niveau hiérarchique)
+- "Échelon"    : numéro complet de l'échelon dans cette classe
+- "Durée"      : nombre d'années à passer dans cet échelon (avancement automatique)
+- "Accès sup." : si "OUI PAR COMPÉTITION" → cet échelon est le dernier de la classe,
+le passage à la classe supérieure nécessite une procédure de compétition
+- "Fin"        : si "OUI" → cet échelon est le dernier de toute la carrière du corps
+
+================================================================================
+PATTERN 1 — 375 corps — le pattern le plus fréquent de la Fonction Publique sénégalaise
+Types concernés : Fonctionnaires, Non-Fonctionnaires, Enseignants Fonctionnaires,
+Enseignants Non-Fonctionnaires
+Hiérarchies concernées : A1, A2, A3, B1, B2
+NOTE : La hiérarchie B3 n'applique PAS le délai de 3 ans du Pattern 1 — elle avance
+à 2 ans pour TOUTES ses classes (voir Règle VG-02b et Pattern 5).
+================================================================================
+RÈGLE PAT1-01 : Grille complète de progression — Pattern 1
+Classe                  | Échelon         | Durée  | Accès classe sup.      | Fin carrière
+------------------------|-----------------|--------|------------------------|-------------
+Quatrième Classe (4CL)        | Premier Échelon (1ECH) | 2 ans  |                        |
+Quatrième Classe (4CL)        | Deuxième Échelon (2ECH)| 2 ans  | OUI PAR COMPÉTITION    |
+Troisième Classe (3CL)        | Premier Échelon (1ECH) | 2 ans  |                        |
+Troisième Classe (3CL)        | Deuxième Échelon (2ECH)| 2 ans  | OUI PAR COMPÉTITION    |
+Deuxième Classe (2CL)         | Premier Échelon (1ECH) | 3 ans  |                        |
+Deuxième Classe (2CL)         | Deuxième Échelon (2ECH)| 3 ans  | OUI PAR COMPÉTITION    |
+Première Classe (1CL)         | Premier Échelon (1ECH) | 3 ans  |                        |
+Première Classe (1CL)         | Deuxième Échelon (2ECH)| 3 ans  | OUI PAR COMPÉTITION    |
+Classe Exceptionnelle (CEX)   | (sans échelon)  | 3 ans  | OUI PAR COMPÉTITION    | OUI
+
+RÈGLE PAT1-02 : Règles de délai pour le Pattern 1
+Les classes Quatrième Classe (4CL) et Troisième Classe (3CL) : délai obligatoire de 2 ans par échelon.
+Les classes Deuxième Classe (2CL), Première Classe (1CL) et Classe Exceptionnelle (CEX) : délai obligatoire de 3 ans.
+Le passage d'une classe à la suivante se fait toujours par compétition, jamais automatiquement.
+Un acte indiquant 2 ans pour un agent en Deuxième Classe (2CL) ou Première Classe (1CL) d'un corps
+de Pattern 1 (hiérarchies A1, A2, A3, B1, B2) est INVALIDE.
+Un acte indiquant 3 ans pour un agent en Quatrième ou Troisième Classe d'un corps de Pattern 1 est également INVALIDE.
+ATTENTION : Cette règle de 3 ans NE S'APPLIQUE PAS à la hiérarchie B3 — voir Règle VG-02b.
+
+RÈGLE PAT1-03 : Corps représentatifs du Pattern 1 (exemples non exhaustifs)
+SPECIALISTES FONCTION PUBLIQUE A1 NF (Non-Fonctionnaire, hiérarchie A1)
+SOCIOLOGUES A1 NF (Non-Fonctionnaire, hiérarchie A1)
+ADMINISTRATEURS CIVILS NF REF (Non-Fonctionnaire, hiérarchie A1)
+JURISTES CONSEILS NF REF (Non-Fonctionnaire, hiérarchies A2 et A3)
+STATISTICIENS NF (Non-Fonctionnaire, hiérarchie A2)
+ATTACHES D'ADMINISTRATION A3 (Fonctionnaire, hiérarchie A3)
+SECRETAIRES D'ADMINISTRATION B2 (Fonctionnaire, hiérarchie B2)
+Et 368 autres corps de hiérarchies A1 à B4
+
+================================================================================
+PATTERN 2 — 182 corps
+Types concernés : Non-Fonctionnaires, Enseignants Fonctionnaires,
+Enseignants Non-Fonctionnaires
+Hiérarchies concernées : B3, B4, C2, C3, C4, D1, D2, D3, D4 et catégories spéciales
+================================================================================
+RÈGLE PAT2-01 : Grille complète de progression — Pattern 2
+Classe                            | Échelon          | Durée  | Accès classe sup.   | Fin
+----------------------------------|------------------|--------|---------------------|-----
+Deuxième Classe (2CL)                   | Premier Échelon (1ECH)  | 2 ans  |                     |
+Deuxième Classe (2CL)                   | Deuxième Échelon (2ECH) | 2 ans  |                     |
+Deuxième Classe (2CL)                   | Troisième Échelon (3ECH)| 2 ans  |                     |
+Deuxième Classe (2CL)                   | Quatrième Échelon (4ECH)| 2 ans  | OUI PAR COMPÉTITION |
+Première Classe (1CL)                   | Premier Échelon (1ECH)  | 2 ans  |                     |
+Première Classe (1CL)                   | Deuxième Échelon (2ECH) | 2 ans  |                     |
+Première Classe (1CL)                   | Troisième Échelon (3ECH)| 2 ans  | OUI PAR COMPÉTITION |
+Classe Principale (PPL)                 | Premier Échelon (1ECH)  | 2 ans  |                     |
+Classe Principale (PPL)                 | Deuxième Échelon (2ECH) | 2 ans  |                     |
+Classe Principale (PPL)                 | Troisième Échelon (3ECH)| 2 ans  | OUI PAR COMPÉTITION |
+Principale de Classe Exceptionnelle (PPL CEX)| (sans échelon)  | 2 ans  | OUI PAR COMPÉTITION | OUI
+
+RÈGLE PAT2-02 : Explication de la Classe Principale (PPL) dans le Pattern 2
+La Classe Principale (PPL) est un niveau spécifique aux corps de catégories C et D.
+Elle se situe entre la Première Classe (1CL) et la Principale de Classe Exceptionnelle (PPL CEX).
+Elle comporte 3 échelons (Premier, Deuxième, Troisième) chacun d'une durée de 2 ans.
+Ce niveau n'existe pas dans les corps de catégories A et B (Pattern 1).
+
+RÈGLE PAT2-03 : Règles de délai pour le Pattern 2
+Toutes les classes sans exception (Deuxième Classe (2CL), Première Classe (1CL), Classe Principale (PPL),
+Principale de Classe Exceptionnelle (PPL CEX)) : délai uniforme de 2 ans par échelon.
+La Deuxième Classe (2CL) comporte 4 échelons (et non 2 comme dans le Pattern 1).
+Un acte indiquant 3 ans pour un corps de Pattern 2 est INVALIDE.
+Un acte mentionnant un 5ème Échelon dans la Deuxième Classe (2CL) pour ce pattern est INVALIDE
+(maximum 4 échelons).
+
+RÈGLE PAT2-04 : Corps représentatifs du Pattern 2
+AGENTS ADMINISTRATIFS NF (Non-Fonctionnaire, hiérarchie C2)
+ADJOINTS INTENDANTS NF (Non-Fonctionnaire, hiérarchie C2)
+Et 180 autres corps de hiérarchies C2 à D4
+
+================================================================================
+PATTERN 3 — 130 corps (identique au Pattern 1 mais avec un stade Stagiaire initial)
+Types concernés : Fonctionnaires et Non-Fonctionnaires
+Hiérarchies concernées : A1, A2, A3, B1, B2
+================================================================================
+RÈGLE PAT3-01 : Grille complète de progression — Pattern 3
+Classe                  | Échelon         | Durée  | Accès classe sup.      | Fin carrière
+------------------------|-----------------|--------|------------------------|-------------
+Stagiaire               | (sans échelon)  | 1 ans  | OUI PAR COMPÉTITION    |
+Quatrième Classe (4CL)        | Premier Échelon (1ECH) | 2 ans  |                        |
+Quatrième Classe (4CL)        | Deuxième Échelon (2ECH)| 2 ans  | OUI PAR COMPÉTITION    |
+Troisième Classe (3CL)        | Premier Échelon (1ECH) | 2 ans  |                        |
+Troisième Classe (3CL)        | Deuxième Échelon (2ECH)| 2 ans  | OUI PAR COMPÉTITION    |
+Deuxième Classe (2CL)         | Premier Échelon (1ECH) | 3 ans  |                        |
+Deuxième Classe (2CL)         | Deuxième Échelon (2ECH)| 3 ans  | OUI PAR COMPÉTITION    |
+Première Classe (1CL)         | Premier Échelon (1ECH) | 3 ans  |                        |
+Première Classe (1CL)         | Deuxième Échelon (2ECH)| 3 ans  | OUI PAR COMPÉTITION    |
+Classe Exceptionnelle (CEX)   | (sans échelon)  | 3 ans  | OUI PAR COMPÉTITION    | OUI
+
+RÈGLE PAT3-02 : Spécificité du stade Stagiaire
+Le parcours commence obligatoirement par une période de stage de 1 ans.
+L'agent est dit "Stagiaire" pendant cette période. Il ne bénéficie pas encore
+de la plénitude des droits liés au statut.
+Après 2 ans, la titularisation (passage à la Quatrième Classe (4CL) Premier Échelon (1ECH))
+est prononcée par compétition (arrêté de titularisation).
+Corps exemples : ADMINISTRATEURS CIVILS A1 (Fonctionnaire, hiérarchie A1)
+
+================================================================================
+PATTERN 4 — 48 corps (stade Stagiaire + 4 échelons en Deuxième Classe (2CL))
+Types concernés : Fonctionnaires uniquement
+Hiérarchies concernées : C1, C2, C3, C4, D1, D2, D3, D4
+================================================================================
+RÈGLE PAT4-01 : Grille complète de progression — Pattern 4
+Classe                              | Échelon          | Durée  | Accès classe sup.   | Fin
+------------------------------------|------------------|--------|---------------------|-----
+Stagiaire                           | (sans échelon)   | 1 ans  | OUI PAR COMPÉTITION |
+Deuxième Classe (2CL)                     | Premier Échelon (1ECH)  | 2 ans  |                     |
+Deuxième Classe (2CL)                     | Deuxième Échelon (2ECH) | 2 ans  |                     |
+Deuxième Classe (2CL)                     | Troisième Échelon (3ECH)| 2 ans  |                     |
+Deuxième Classe (2CL)                     | Quatrième Échelon (4ECH)| 2 ans  | OUI PAR COMPÉTITION |
+Première Classe (1CL)                     | Premier Échelon (1ECH)  | 2 ans  |                     |
+Première Classe (1CL)                     | Deuxième Échelon (2ECH) | 2 ans  |                     |
+Première Classe (1CL)                     | Troisième Échelon (3ECH)| 2 ans  | OUI PAR COMPÉTITION |
+Classe Principale (PPL)                   | Premier Échelon (1ECH)  | 2 ans  |                     |
+Classe Principale (PPL)                   | Deuxième Échelon (2ECH) | 2 ans  |                     |
+Classe Principale (PPL)                   | Troisième Échelon (3ECH)| 2 ans  | OUI PAR COMPÉTITION |
+Principale de Classe Exceptionnelle (PPL CEX) | (sans échelon)   | 2 ans  | OUI PAR COMPÉTITION | OUI
+
+RÈGLE PAT4-02 : Spécificités du Pattern 4
+Corps fonctionnaires de catégories C et D. Tous les délais sont de 2 ans.
+La Deuxième Classe (2CL) comporte 4 échelons. La carrière débute par le stade Stagiaire.
+Corps exemples : COMMIS D'ADMINISTRATION C2 (Fonctionnaire), AGENTS D'ADMINISTRATION (Fonctionnaire)
+
+================================================================================
+PATTERN 5 — 2 corps (Classe Exceptionnelle (CEX) à 2 ans au lieu de 3)
+Types : Non-Fonctionnaires — Hiérarchies : B3/B4, C3
+================================================================================
+RÈGLE PAT5-01 : Grille Pattern 5
+Pour la hiérarchie B3 : toutes les classes (Quatrième Classe (4CL), Troisième Classe (3CL),
+Deuxième Classe (2CL), Première Classe (1CL) et Classe Exceptionnelle (CEX)) avancent
+avec un délai OBLIGATOIRE de 2 ans par échelon. Contrairement au Pattern 1 qui impose
+3 ans à partir de la Deuxième Classe (2CL), la hiérarchie B3 applique uniformément 2 ans.
+La Classe Exceptionnelle (CEX) est également à 2 ans.
+Corps concernés : COMPTABLES NF B1, COMPTABLES NF B2
+
+================================================================================
+PATTERN 6 — 2 corps (progression atypique de la Première Classe (1CL) vers la Troisième Classe (3CL))
+Types : Non-Fonctionnaires — Hiérarchies : Spécial
+================================================================================
+RÈGLE PAT6-01 : Grille Pattern 6
+Ce pattern présente un ordre de classes inhabituel dans la base de données :
+la progression va de la Première Classe (1CL) vers la Deuxième Classe (2CL) puis vers la Troisième Classe (3CL),
+ce qui est l'inverse de l'ordre habituel. Cela correspond à des corps dont la numérotation
+des grades est inversée dans le système. Délai de 3 ans partout.
+Corps : SECRETAIRES STENODACTYLOGRAPHES CORRESPONDANCIERS NF niveau A et B
+
+================================================================================
+PATTERN 7 — 2 corps (Première Classe (1CL) précède la Deuxième Classe (2CL) dans l'ordre enregistré)
+Types : Non-Fonctionnaires — Hiérarchies : D1, D4
+================================================================================
+RÈGLE PAT7-01 : Grille Pattern 7 (erreur à corriger)
+Ordre enregistré dans la base : Première Classe (1CL) (3 échelons à 2 ans) → Deuxième Classe (2CL)
+(4 échelons à 2 ans) → Principale de Classe Exceptionnelle (PPL CEX) → Classe Principale (PPL) (3 échelons).
+Tous les délais sont de 2 ans. L'ordre d'enregistrement est atypique mais les libellés
+réels des classes restent valides.
+
+================================================================================
+PATTERNS 8 À 15 — Corps individuels avec des grilles spécifiques
+================================================================================
+RÈGLE PAT8-15-01 : Description des patterns minoritaires
+Ces patterns concernent chacun 1 ou 2 corps avec des particularités rares :
+Pattern 8  (1 corps, Fonctionnaire, catégorie C4) : (erreur à corriger)
+Le parcours commence au stade Stagiaire mais la Deuxième Classe (2CL) débute au
+Deuxième Échelon (2ECH) (pas au Premier Échelon (1ECH) comme habituellement).
+Pattern 9  (1 corps, Enseignant Fonctionnaire, hiérarchie A3) : (erreur à corriger)
+Identique au Pattern 1 mais avec un retour à la Deuxième Classe (2CL) Premier Échelon (1ECH)
+après la Classe Exceptionnelle (CEX) (particularité spécifique à ce corps).
+Pattern 10 (1 corps, Enseignant Non-Fonctionnaire, hiérarchie D1) : (erreur à corriger)
+Chaque dernière classe (Deuxième Classe (2CL), Première Classe (1CL), Classe Principale (PPL),
+Principale de Classe Exceptionnelle (PPL CEX)) porte l'indicateur de fin de carrière.
+Tous les délais sont de 2 ans.
+Pattern 11 (1 corps, Non-Fonctionnaire, catégorie Spéciale) : (erreur à corriger)
+Présence de délais de 4 ans (unique dans toute la base), spécifique à ce corps.
+Grille : Première Classe (1CL) (2 échelons à 3 ans) → Deuxième Classe (2CL) (3 échelons à 4 ans)
+→ Principale de Classe Exceptionnelle (PPL CEX) (4 ans).
+Pattern 12 (1 corps, Non-Fonctionnaire, catégorie Spéciale) : (erreur à corriger)
+Mélange de délais de 2 ans et 3 ans sur différentes classes avec un ordre
+partiellement atypique dans la base.
+Pattern 13 (1 corps, Non-Fonctionnaire, hiérarchie A1) : (erreur à corriger)
+Contient une Cinquième Classe et une Classe Exceptionnelle (CEX) avec 2 échelons
+numérotés (Premier et Deuxième Échelon (2ECH) de la Classe Exceptionnelle (CEX)).
+Pattern 14 (1 corps, Non-Fonctionnaire, hiérarchie B2) : (erreur à corriger)
+Toutes les classes à 2 ans, comprend une Cinquième Classe et une Classe
+Exceptionnelle avec 2 échelons.
+Pattern 15 (1 corps, Non-Fonctionnaire, hiérarchie B3/B4) : (erreur à corriger)
+Identique au Pattern 1 mais la Classe Exceptionnelle (CEX) ne porte pas l'indicateur
+de fin de carrière dans la base.
+
+================================================================================
+SECTION 10 - TABLEAU RÉCAPITULATIF COMPLET DES DÉLAIS PAR PATTERN
+================================================================================
+Pattern | Nb corps | Types d'agents           | Hiérarchies     | Stag. | Délai 4ème/3ème Cl. | Délai 2ème/1ère Cl. | Échelons 2ème Cl.
+--------|----------|--------------------------|-----------------|-------|---------------------|---------------------|------------------
+PAT-1   |   375    | FONCT/NF/ENS-FONCT/NF    | A1,A2,A3,B1,B2  | Non   | 2 ans               | 3 ans               | 2 (Premier+Deuxième)
+PAT-2   |   182    | NF/ENS-FONCT/ENS-NF      | C2-D4/Spécial   | Non   | n/a (part. à 2CL)   | 2 ans               | 4 (Premier à Quatrième)
+PAT-3   |   130    | FONCT/NF                 | A1,A2,A3,B1,B2  | Oui   | 2 ans               | 3 ans               | 2 (Premier+Deuxième)
+PAT-4   |    48    | FONCT uniquement         | C1-D4           | Oui   | n/a (part. à 2CL)   | 2 ans               | 4 (Premier à Quatrième)
+PAT-5   |     2    | NF                       | B3/B4, C3       | Non   | 2 ans               | 2 ans               | 2
+PAT-6   |     2    | NF                       | Spécial         | Non   | n/a                 | 3 ans               | 2
+PAT-7   |     2    | NF                       | D1, D4          | Non   | n/a                 | 2 ans               | 4
+PAT-8   |     1    | FONCT                    | C4              | Oui   | n/a                 | 2 ans (dès 2ECH)    | 3 (2ème à 4ème)
+PAT-9   |     1    | ENS-FONCT                | A3              | Non   | 2 ans               | 3 ans + retour      | 2
+PAT-10  |     1    | ENS-NF                   | D1              | Non   | n/a                 | 2 ans               | 4
+PAT-11  |     1    | NF                       | Spécial         | Non   | n/a                 | 3 ans / 4 ans       | 3
+PAT-12  |     1    | NF                       | Spécial         | Non   | n/a                 | 2 et 3 ans mixtes   | 2
+PAT-13  |     1    | NF                       | A1              | Non   | 2 ans + 5ème Cl.    | 3 ans               | 2
+PAT-14  |     1    | NF                       | B2              | Non   | 2 ans + 5ème Cl.    | 2 ans               | 2
+PAT-15  |     1    | NF                       | B3/B4           | Non   | 2 ans               | 3 ans               | 2
+
+================================================================================
+SECTION 11 - RÈGLES DE VALIDATION BASÉES SUR LES GRILLES RÉELLES
+================================================================================
+RÈGLE VG-01 : Comment identifier le pattern d'un corps avant de valider un acte
+Étape 1 : Identifier le corps mentionné dans l'acte (libellé complet du corps).
+Étape 2 : Consulter la base vectorielle pour retrouver ce corps et sa hiérarchie.
+Étape 3 : Identifier le pattern applicable (PAT-1 à PAT-15) via la hiérarchie et le type.
+Étape 4 : Appliquer les règles de délai du pattern correspondant.
+
+RÈGLE VG-02 : Règle de délai pour les corps de hiérarchies A et B (Patterns 1 et 3)
+Pour tout corps de hiérarchie A1, A2, A3, B1 ou B2 :
+- Quatrième Classe (4CL) et Troisième Classe (3CL) : délai OBLIGATOIRE de 2 ans par échelon.
+- Deuxième Classe (2CL), Première Classe (1CL) et Classe Exceptionnelle (CEX) : délai OBLIGATOIRE de 3 ans.
+Un acte indiquant 2 ans pour un agent en Deuxième ou Première Classe (1CL) d'un corps
+de hiérarchie A1, A2, A3, B1 ou B2 est INVALIDE.
+Un acte indiquant 3 ans pour un agent en Quatrième ou Troisième Classe (3CL) d'un corps
+de hiérarchie A ou B est INVALIDE.
+
+RÈGLE VG-02b : Règle de délai spécifique pour la hiérarchie B3 (toutes classes)
+Pour tout corps de hiérarchie B3 : délai OBLIGATOIRE de 2 ans par échelon, pour TOUTES les classes
+(Quatrième Classe (4CL), Troisième Classe (3CL), Deuxième Classe (2CL), Première Classe (1CL) et Classe Exceptionnelle (CEX)).
+Un acte indiquant 3 ans pour un agent de hiérarchie B3, quelle que soit sa classe, est INVALIDE.
+
+RÈGLE VG-03 : Règle de délai pour les corps de hiérarchies C et D (Patterns 2 et 4)
+Pour tout corps de hiérarchie C1, C2, C3, C4, D1, D2, D3 ou D4 :
+- Toutes les classes sans exception : délai OBLIGATOIRE de 2 ans par échelon.
+- La Deuxième Classe (2CL) comporte 4 échelons (Premier, Deuxième, Troisième, Quatrième).
+- La Première Classe (1CL) et la Classe Principale (PPL) comportent chacune 3 échelons.
+Un acte indiquant 3 ans pour un corps de hiérarchie C ou D est INVALIDE.
+
+RÈGLE VG-04 : Règle du stade Stagiaire
+Les corps de Patterns 3 et 4 (généralement fonctionnaires) débutent par un stade Stagiaire.
+Un acte de nomination pour un corps de Pattern 3 ou 4 DOIT mentionner ce stade.
+Durée du stage : 2 ans, suivie d'une titularisation par compétition (arrêté officiel requis).
+
+RÈGLE VG-05 : Règle sur le changement de classe (avancement de grade)
+Dans TOUS les patterns, le passage d'une classe à la classe supérieure nécessite
+une décision administrative de promotion par compétition. Ce passage ne peut jamais
+être automatique, même si le délai dans le dernier échelon est écoulé.
+Un acte d'avancement de grade sans mention d'une procédure de sélection est SUSPECT.
+
+RÈGLE VG-06 : Nombre maximal d'échelons par classe selon le pattern
+Patterns 1, 3, 5 (hiérarchies A et B) :
+Quatrième Classe (4CL) : 2 échelons maximum (Premier et Deuxième Échelon (2ECH) uniquement)
+Troisième Classe (3CL) : 2 échelons maximum
+Deuxième Classe (2CL)  : 2 échelons maximum
+Première Classe (1CL)  : 2 échelons maximum
+Patterns 2 et 4 (hiérarchies C et D) :
+Deuxième Classe (2CL)  : 4 échelons maximum (Premier, Deuxième, Troisième, Quatrième)
+Première Classe (1CL)  : 3 échelons maximum (Premier, Deuxième, Troisième)
+Classe Principale (PPL): 3 échelons maximum (Premier, Deuxième, Troisième)
+Un acte mentionnant un Troisième Échelon (3ECH) de la Deuxième Classe (2CL) pour un corps
+de Pattern 1 ou 3 est INVALIDE.
+Un acte mentionnant un Cinquième Échelon pour n'importe quel corps est INVALIDE.
+
+RÈGLE VG-07 : Classe de départ selon la nomination
+Corps SANS stade Stagiaire (Patterns 1 et 2) :
+Grade de départ = Quatrième Classe (4CL) Premier Échelon (1ECH) (hiérarchies A et B)
+Grade de départ = Deuxième Classe (2CL) Premier Échelon (1ECH) (hiérarchies C et D)
+Corps AVEC stade Stagiaire (Patterns 3 et 4) :
+Grade de départ = Stagiaire pendant 2 ans, puis Quatrième Classe (4CL) ou Deuxième
+Classe Premier Échelon (1ECH) après titularisation par compétition.
+
+RÈGLE VG-08 : Table de correspondance hiérarchie et pattern
+Hiérarchie A1 → Pattern 1 ou 3 (selon présence ou absence du stade Stagiaire)
+Hiérarchie A2 → Pattern 1 ou 3
+Hiérarchie A3 → Pattern 1 ou 3
+Hiérarchie B1 → Pattern 1 ou 3
+Hiérarchie B2 → Pattern 1 ou 3
+Hiérarchies B3 et B4 → Pattern 5 (toutes classes à 2 ans — ne pas confondre avec Pattern 1)
+Hiérarchie C1 → Pattern 4
+Hiérarchie C2 → Pattern 2 ou 4
+Hiérarchie C3 → Pattern 2
+Hiérarchie C4 → Pattern 2 ou 4
+Hiérarchie D1 → Pattern 2 ou 4
+Hiérarchie D2 → Pattern 2 ou 4
+Hiérarchie D3 → Pattern 2 ou 4
+Hiérarchie D4 → Pattern 2 ou 4
+Hiérarchies spéciales → Patterns 6, 7, 10, 11 ou 12 (cas particuliers à vérifier)
+
+================================================================================
+SECTION 12 - SYNTHÈSE DES TYPES D'ACTES ET LEURS CARACTÉRISTIQUES
+================================================================================
+Type d'acte                | Statut  | Nom de l'acte | Autorité signataire
+---------------------------|---------|---------------|--------------------------------------------------
+Avancement d'échelon       | NF      | DÉCISION      | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Avancement d'échelon       | FONCT   | ARRÊTÉ        | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Avancement de grade        | NF      | DÉCISION      | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Avancement de grade        | FONCT   | ARRÊTÉ        | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Nomination/Titularisation  | FONCT   | ARRÊTÉ        | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Validation d'ancienneté    | FONCT   | ARRÊTÉ        | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Admission à la retraite    | FONCT   | ARRÊTÉ        | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Mise en disponibilité      | FONCT   | ARRÊTÉ        | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+Radiation pour abandon     | FONCT   | ARRÊTÉ        | LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,
+
+================================================================================
+SECTION 13 - ADMISSION À LA RETRAITE
+================================================================================
+RÈGLE RET-01 : Définition
+L'admission à la retraite est l'acte administratif par lequel un fonctionnaire
+est mis fin à ses fonctions actives et autorisé à faire valoir ses droits à une
+pension de retraite versée jusqu'à son décès.
+
+RÈGLE RET-02 : Base légale obligatoire
+Tout acte d'admission à la retraite d'un fonctionnaire DOIT obligatoirement citer :
+✔ Loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée
+✔ Loi n°81-52 du 10 juillet 1981 portant Code des Pensions civiles et militaires
+de retraite, modifiée
+✔ Le décret portant statut particulier du cadre auquel appartient l'agent
+
+RÈGLE RET-03 : Âge de départ à la retraite
+L'âge légal de retraite est de 60 ans pour l'ensemble des fonctionnaires.
+La date d'effet de la mise à la retraite est fixée au premier jour du mois
+qui suit la date à laquelle l'agent atteint l'âge de 60 ans.
+Formule de calcul : si l'agent est né le JJ/MM/AAAA, il atteint 60 ans le JJ/MM/(AAAA+60),
+et la retraite prend effet le 01/(MM+1)/(AAAA+60).
+Exemple : né le 19 novembre 1960 → atteint 60 ans le 19 novembre 2020
+→ date d'effet de la retraite : 01 décembre 2020
+
+RÈGLE RET-04 : Contenu obligatoire de l'acte d'admission à la retraite
+L'acte doit mentionner obligatoirement :
+- Nom, prénom, date et lieu de naissance de l'agent
+- Corps d'appartenance + classe + échelon + hiérarchie au moment du départ
+- Matricule de solde + Ministère d'affectation
+- Âge atteint à la date d'effet (doit correspondre exactement à 60 ans)
+- Date d'effet au format "Pour compter du 1er [Mois] [Année]"
+- Formule obligatoire : "est admis à faire valoir ses droits à une Pension de retraite"
+
+RÈGLE RET-05 : Vérification de la cohérence des informations de retraite
+Le contrôleur doit vérifier :
+1. Que l'âge mentionné dans l'acte correspond bien à 60 ans à la date d'effet
+2. Que la date d'effet est bien le 1er du mois suivant les 60 ans
+3. Que la loi n°81-52 portant Code des Pensions est bien citée
+Un acte de retraite ne citant pas la loi n°81-52 est INVALIDE.
+
+================================================================================
+SECTION 14 - MISE EN DISPONIBILITÉ
+================================================================================
+RÈGLE DISP-01 : Définition
+La disponibilité est la position administrative dans laquelle un fonctionnaire
+est placé hors de son corps d'origine. Pendant cette période, il cesse de
+bénéficier de ses droits à l'avancement et à la constitution d'une retraite.
+
+RÈGLE DISP-02 : Base légale obligatoire
+Tout acte de disponibilité DOIT obligatoirement citer et mentionner dans l'article 1er :
+✔ Article 82 alinéa 2 et 3 de la loi n°61-33 du 15 juin 1961 relative au statut
+général des fonctionnaires, modifiée
+✔ Le décret portant statut particulier du cadre concerné
+
+RÈGLE DISP-03 : Durée de la disponibilité
+La disponibilité est accordée pour une durée de deux ans (2 ans) renouvelable.
+Elle ne peut excéder cette durée sans faire l'objet d'un renouvellement explicite.
+
+RÈGLE DISP-04 : Obligations de l'agent en disponibilité
+L'agent en disponibilité DOIT, deux mois avant l'expiration de la période en cours,
+solliciter soit le renouvellement de la disponibilité, soit la réintégration dans
+son cadre d'origine. Faute de respecter ce délai, l'agent est automatiquement
+considéré comme démissionnaire de son emploi.
+
+RÈGLE DISP-05 : Éléments obligatoires de l'acte de disponibilité
+L'acte doit mentionner :
+- La référence à l'article 82 alinéa 2 et 3 de la loi n°61-33 dans l'article premier
+- La date de début de la disponibilité
+- Le poste budgétaire libéré par le départ de l'agent
+- Un article distinct sur l'ordre de recettes pour toutes les sommes perçues
+indûment après la date de prise d'effet de la disponibilité
+
+================================================================================
+SECTION 15 - RADIATION POUR ABANDON DE POSTE
+================================================================================
+RÈGLE RAD-01 : Définition et conséquences
+La radiation pour abandon de poste est la mesure administrative par laquelle
+un fonctionnaire est définitivement exclu de la Fonction Publique à la suite
+d'un abandon injustifié et prolongé de son poste de travail.
+Cette mesure entraîne la perte définitive et irrévocable du statut de fonctionnaire
+et de tous les droits qui y sont attachés.
+
+RÈGLE RAD-02 : Contenu obligatoire de l'acte de radiation
+L'acte de radiation doit mentionner :
+- Nom, prénom de l'agent
+- Corps d'appartenance + classe + échelon
+- Matricule de solde
+- Ministère ou service d'affectation au moment de l'abandon
+- Motif explicite : "radiation pour abandon de poste"
+- Date d'effet : correspond à la date constatée du début de l'abandon de poste
+
+RÈGLE RAD-03 : Tableau comparatif des types de cessation de fonctions
+Type de cessation      | Motif principal              | Calcul date d'effet         | Réversible
+-----------------------|------------------------------|-----------------------------|------------
+Retraite               | Âge légal atteint (60 ans)   | 1er du mois suivant les 60a | Non
+Disponibilité          | Demande de l'agent           | Date précise choisie        | Oui (2 ans)
+Radiation              | Abandon injustifié de poste  | Date constatée de l'abandon | Non
+
+================================================================================
+SECTION 16 - RÈGLES DE COHÉRENCE ET DE VALIDATION COMPLÈTES
+================================================================================
+RÈGLE V-01 : Cohérence statut de l'agent et lois de référence
+Pour un agent NON FONCTIONNAIRE, l'acte DOIT obligatoirement citer :
+✔ Loi n°97-17 du 1er décembre 1997 portant Code du travail, modifiée
+✔ Décret n°74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents
+non fonctionnaires de l'État, modifié
+Pour un agent FONCTIONNAIRE, l'acte DOIT obligatoirement citer :
+✔ Loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée
+✔ Le décret portant statut particulier du cadre concerné
+
+RÈGLE V-02 : Cohérence entre le corps et sa hiérarchie
+Chaque corps appartient à une hiérarchie fixe et immuable. Toute incohérence
+entre le corps mentionné dans l'acte et la hiérarchie indiquée constitue une erreur.
+Exemples de correspondances validées :
+JURISTES NF                          → hiérarchie A3
+STATISTICIEN NF                      → hiérarchie A2
+COMMIS D'ADMINISTRATION C3 NF        → hiérarchie C3
+PROFESSEURS DE CEM                   → hiérarchie B2
+INSTITUTEURS ADJOINTS                → hiérarchie C2
+CHAUFFEUR ET CONDUCTEUR D'ENGINS TP  → hiérarchie D1
+TECHNICIENS MEDICAUX B4              → hiérarchie B3/B4
+
+RÈGLE V-03 : Cohérence du délai d'avancement d'échelon
+Le délai doit correspondre exactement au délai réglementaire du pattern du corps :
+- Hiérarchies A et B (B1, B2), classes Quatrième et Troisième   : 2 ans obligatoire
+- Hiérarchies A et B (B1, B2), classes Deuxième, Première, CEX  : 3 ans obligatoire
+- Hiérarchie B3, toutes classes                                  : 2 ans obligatoire
+- Hiérarchies C et D, toutes classes                             : 2 ans obligatoire
+Tout écart avec le délai attendu constitue une anomalie à signaler obligatoirement.
+
+RÈGLE V-04 : Cohérence lors d'un avancement de grade
+La nouvelle classe doit être immédiatement supérieure à l'ancienne.
+Un saut de deux classes ou plus n'est pas autorisé sans justification explicite.
+L'avancement de grade nécessite toujours une procédure de compétition préalable.
+
+RÈGLE V-05 : Unicité du matricule de solde
+Chaque agent possède un et un seul matricule de solde. Ce matricule est unique
+dans toute la Fonction Publique sénégalaise et ne peut être partagé entre agents.
+
+RÈGLE V-06 : Mentions légales obligatoires dans tout acte
+Tout acte administratif de gestion du personnel DOIT contenir :
+✔ L'en-tête officiel complet en haut de page (voir RÈGLE J-02) :
+  REPUBLIQUE DU SENEGAL
+  Un Peuple - Un But - Une Foi
+  Ministère de la Fonction publique, du
+  Travail et de la Réforme du Service public
+  [Initiales du créateur du projet, ex: SSMD]
+✔ L'objet de l'acte (avancement d'échelon, avancement de grade, etc.)
+✔ Les références juridiques (lignes commençant par "Vu" ou "VU")
+✔ La mention "Vu le dossier de l'intéressé(e)"
+✔ L'article premier décrivant la décision principale
+✔ L'article de publication finale
+
+RÈGLE V-07 : Formule de clôture obligatoire
+Tout acte doit impérativement se terminer par la formule suivante (ou équivalente) :
+"La présente décision sera enregistrée, publiée et communiquée partout où besoin sera."
+ou "Le présent arrêté sera enregistré, publié et communiqué partout où besoin sera."
+
+RÈGLE V-08 : Cohérence entre le corps et le décret de statut particulier
+Chaque corps dépend d'un décret de statut particulier spécifique. Exemples :
+TECHNICIENS MEDICAUX B4   → Décret n°77-887 du 12 octobre 1977 (Santé et Action sociale)
+PROFESSEURS DE CEM        → Décret n°77-987 du 14 novembre 1977 (Enseignement)
+INSTITUTEURS ADJOINTS     → Décret n°77-987 du 14 novembre 1977 (Enseignement)
+ADMINISTRATEURS CIVILS    → Décret n°77-880 du 10 octobre 1980 (Administration générale)
+
+RÈGLE V-09 : Format de la date d'effet selon le type d'acte
+Acte de retraite      : "1er [Mois] [Année]" (toujours le premier du mois)
+Acte de disponibilité : "JJ [Mois] [Année]" (date précise de début)
+Acte de radiation     : "JJ [Mois] [Année]" (date constatée de l'abandon)
+Acte d'avancement     : même jour et même mois que la date précédente + délai réglementaire
+
+RÈGLE V-10 : Vérification de la loi sur les pensions dans les actes de retraite
+Tout acte d'admission à la retraite qui ne cite pas explicitement la loi n°81-52
+du 10 juillet 1981 portant Code des Pensions civiles et militaires de retraite
+est considéré comme INVALIDE et doit être corrigé.
+
+================================================================================
+FIN DU DOCUMENT - RÈGLES MÉTIER v1.7
+Historique des versions :
+- v1.0 : Extraction initiale de 7 actes (avancements, nominations, validations)
+- v1.1 : Ajout des grilles Instituteurs et Professeurs (document manuscrit interne)
+- v1.2 : Ajout des règles retraite, disponibilité, radiation pour abandon de poste
+- v1.3 : Correction du délai pour les Non-Fonctionnaires hiérarchie A en Première Classe (1CL) = 3 ans
+- v1.4 : Refonte des grilles basée sur 8 543 enregistrements officiels, 15 patterns
+- v1.5 : Suppression de toutes les abréviations, explication complète de chaque terme,
+ajout du glossaire complet (Classe, Échelon, PPL, CEX, Stagiaire, etc.)
+- v1.7 : Correction des délais d'avancement pour la hiérarchie B3 : toutes les classes (4CL, 3CL, 2CL, 1CL, CEX) passent à 2 ans (au lieu de 3 ans pour 2CL/1CL/CEX). Mise à jour des règles VG-02, VG-02b, V-03 (Sections 7 et 16), PAT1, PAT5 et tableau récapitulatif Section 10.
+
+Source des données :
+- Plus de 10 actes administratifs réels analysés
+- Base de données officielle : 843 corps, 8 543 enregistrements grade/échelon
+- 15 patterns de progression de carrière identifiés et documentés
+================================================================================

@@ -1,0 +1,34 @@
+# API
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.18
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+httpx>=0.28.0
+
+# RAG & Embeddings (CPU)
+sentence-transformers>=3.3.0
+faiss-cpu>=1.9.0
+
+# LLM léger optionnel (si mode cpu_local)
+transformers>=4.47.0
+accelerate>=1.2.0
+
+# Vision (désactivée en CPU)
+Pillow>=11.0.0
+
+# PDF/DOCX
+pymupdf>=1.25.0
+python-docx>=1.1.0
+
+# RAG splitting
+langchain-text-splitters>=0.3.4
+
+# Dashboard
+streamlit>=1.41.0
+plotly>=5.24.0
+
+# Utils
+pandas>=2.2.0
+numpy>=1.26.0

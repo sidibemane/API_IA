@@ -1,0 +1,35 @@
+"ech_code","ech_libelle","ech_description"
+"1_JU",Echelon1,
+"1_MIL",chevron1,
+"1_PM",Echelon 1,
+"1_SG","1er échelon","1ECH"
+"10_MIL",echelon7,
+"11_MIL",echelon8,
+"12_MIL",echelon9,
+"13_MIL",echelon10,
+"14_MIL",echelon11,
+"15_MIL",echelon12,
+"16_MIL",unique,
+"2_JU",Echelon2,
+"2_MIL",chevron2,
+"2_PM",Echelon 2,
+"2_SG","2eme échelon","2ECH"
+"25_SG",Classe exceptionnelle,CEX
+"26_SG",NON_RENSEIGNE, 
+"3_JU",Echelon3,
+"3_MIL",chevron3,
+"3_PM",Echelon 3,
+"3_SG","3eme échelon","3ECH"
+"4_JU",Echelon4,
+"4_MIL",echelon1,
+"4_PM",Echelon 4,
+"4_SG","4eme échelon","4ECH"
+"5_JU",Echelon5,
+"5_MIL",echelon2,
+"5_SG","1er Cat","1er Cat"
+"6_JU",Echelon6,
+"6_MIL",echelon3,
+"6_SG","2em Cat","2em Cat"
+"7_MIL",echelon4,
+"8_MIL",echelon5,
+"9_MIL",echelon6,
