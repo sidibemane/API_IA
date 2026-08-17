@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("🚀 Démarrage API RAG RH (mode CPU)...")
+    logger.info(" Démarrage API RAG RH (mode CPU)...")
 
     from app.services.rag_service import initialiser_rag
     initialiser_rag()
@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(get_settings().logs_dir, exist_ok=True)
 
     mode = get_settings().llm_mode
-    logger.info(f"✅ API prête ! Mode LLM : {mode}")
+    logger.info(f" API prête ! Mode LLM : {mode}")
     yield
 
 
