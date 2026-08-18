@@ -201,6 +201,27 @@ class MoteurValidationGIRAFE:
             except Exception as e:
                 logger.warning(f"Vérification sémantique indisponible : {e}")
 
+            # Identité agent (matricule / nom / prénom / date de naissance vs base des agents)
+            try:
+                from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, verifier_delais_avancement
+                anomalies_id, checks_id = verifier_identite_agent(acte_text, etape, profil)
+                anomalies.extend(anomalies_id)
+                checks.update(checks_id)
+
+                # Délai d'avancement grade/échelon (utilise les infos déjà extraites ci-dessus)
+                agents_acte = extraire_identite_agent(acte_text)
+                anomalies_delai, checks_delai = verifier_delais_avancement(
+                    acte_text, agents_acte,
+                    resultats_abc["infos"]["statut"],
+                    resultats_abc["infos"]["hierarchie"],
+                    resultats_abc["infos"]["corps"],
+                    etape, profil,
+                )
+                anomalies.extend(anomalies_delai)
+                checks.update(checks_delai)
+            except Exception as e:
+                logger.warning(f"Vérification identité/délai indisponible : {e}")
+
             self.etapes_textuelles_faites.add(etape)
             self.anomalies_textuelles = anomalies
             self.checks_textuels = checks

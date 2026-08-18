@@ -1,3 +1,23 @@
+from enum import Enum
+
+class NiveauCriticite(Enum):
+    BLOQUANT = "Bloquant"
+    IMPORTANT = "Important"
+    INFORMATION = "Information"
+
+class StatutEtape(Enum):
+    EN_ATTENTE = "En attente"
+    EN_COURS = "En cours"
+    VALIDE = "Validé"
+    REJETE = "Rejeté"
+    ANOMALIES = "Anomalies détectées"
+
+class TypeActe(Enum):
+    RETRAITE_FONCTIONNAIRE = "retraite_fonctionnaire"
+    AVANCEMENT_ECHELON = "avancement_echelon"
+    AUTRE = "autre"
+
+
 """Modèles Pydantic pour l'API RAG RH."""
 
 from typing import List

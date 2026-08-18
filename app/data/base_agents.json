@@ -1,0 +1,132 @@
+[
+  {
+    "matricule": "615987B",
+    "nom": "GUEYE",
+    "prenom": "Mamadou",
+    "date_naissance": null,
+    "corps": "Chauffeurs",
+    "grade": "NF D3 — PPL 2ECH",
+    "hierarchie": "D3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "612001F",
+    "nom": "CISSE",
+    "prenom": "Fatou",
+    "date_naissance": null,
+    "corps": "Socioéconomiste",
+    "grade": "NFA3 — 1CL 2ECH",
+    "hierarchie": "A3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "631333A",
+    "nom": "COLY",
+    "prenom": "Bassirou",
+    "date_naissance": null,
+    "corps": "Chauffeurs et Conducteurs d'Engins des Travaux Publics",
+    "grade": "NF D3 — 1CL 3ECH",
+    "hierarchie": "D3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "631743B",
+    "nom": "GUEYE",
+    "prenom": "Tamsir",
+    "date_naissance": null,
+    "corps": "Chauffeurs et Conducteurs d'Engins des Travaux Publics",
+    "grade": "NF D3 — 1CL 3ECH",
+    "hierarchie": "D3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "640962C",
+    "nom": "NDOYE",
+    "prenom": "Moussé",
+    "date_naissance": null,
+    "corps": "Chauffeurs et Conducteurs d'Engins des Travaux Publics",
+    "grade": "NF D3 — 1CL 3ECH",
+    "hierarchie": "D3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "647361K",
+    "nom": "CISSOKHO",
+    "prenom": "Toumany",
+    "date_naissance": null,
+    "corps": "Chauffeurs et Conducteurs d'Engins des Travaux Publics",
+    "grade": "NF D3 — 1CL 3ECH",
+    "hierarchie": "D3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "642187D",
+    "nom": "NGOM",
+    "prenom": "Pape Diokel",
+    "date_naissance": null,
+    "corps": "Chauffeurs et Conducteurs d'Engins des Travaux Publics",
+    "grade": "NF D3 — 1CL 3ECH",
+    "hierarchie": "D3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "654640C",
+    "nom": "SAKHO",
+    "prenom": "Kader",
+    "date_naissance": null,
+    "corps": "Chauffeurs et Conducteurs d'Engins des Travaux Publics",
+    "grade": "NF D3 — 1CL 2ECH",
+    "hierarchie": "D3",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "600825E",
+    "nom": "SOURANG",
+    "prenom": "Amadou Moustapha",
+    "date_naissance": null,
+    "corps": "Médecins, Pharmaciens, Chirurgiens Dentistes",
+    "grade": "NF REF — CEX",
+    "hierarchie": "AS",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "603258D",
+    "nom": "ZOUBI",
+    "prenom": "Louis Hyacinthe",
+    "date_naissance": null,
+    "corps": "Médecins, Pharmaciens, Chirurgiens Dentistes",
+    "grade": "NF REF — CEX",
+    "hierarchie": "AS",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "603034H",
+    "nom": "SARR",
+    "prenom": "Anta",
+    "date_naissance": null,
+    "corps": "Médecins, Pharmaciens, Chirurgiens Dentistes",
+    "grade": "NF REF — CEX",
+    "hierarchie": "AS",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "625939F",
+    "nom": "THIAW",
+    "prenom": "Fatoumata",
+    "date_naissance": null,
+    "corps": "Ingénieurs Informaticiens",
+    "grade": "NF — 1CL 2ECH",
+    "hierarchie": "",
+    "direction_affectation": ""
+  },
+  {
+    "matricule": "518226F",
+    "nom": "FALL",
+    "prenom": "Sidy Mouhamed",
+    "date_naissance": null,
+    "corps": "Ingénieurs Informaticiens",
+    "grade": "NF — 1CL 2ECH",
+    "hierarchie": "",
+    "direction_affectation": ""
+  }
+]

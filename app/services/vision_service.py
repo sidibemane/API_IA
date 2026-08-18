@@ -63,9 +63,10 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
 
     prompt_visuel = (
         "Analyse cette image d'un document administratif sénégalais. "
-        "Vérifie : numéro d'acte en haut, tampons (DGFP, DIRSOLDE, DPB, CF), "
+        "Vérifie : numéro d'acte en haut, tampons (DGFP, DIRSOLDE, DPB, CF, DP), "
         "signature du ministre en bas. "
-        "Réponds en JSON : {\"numero_acte_haut\": bool, \"tampon_DGFP\": bool, "
+        "Réponds UNIQUEMENT avec un objet JSON, sans aucun texte avant ou après, "
+        "au format exact : {\"numero_acte_haut\": bool, \"tampon_DGFP\": bool, "
         "\"tampon_DIRSOLDE\": bool, \"tampon_DPB\": bool, \"tampon_CF\": bool, "
         "\"tampon_DP\": bool, \"signature_cachet_ministre_bas\": bool, "
         "\"details\": \"...\"}"
@@ -73,22 +74,43 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
 
     headers = {
         "Authorization": f"Bearer {settings.hf_token}",
+        "Content-Type": "application/json",
     }
 
-    # Envoi de la première image
+    # API HF Inference — endpoint "router" compatible OpenAI chat completions,
+    # seul format actuellement supporté pour les modèles vision-langage (VLM)
+    # comme Qwen2.5-VL. L'ancien format multipart (data+files) ne fonctionne
+    # pas avec ce type de modèle et provoquait un retour vide/non-JSON, d'où
+    # les tampons systématiquement signalés comme absents.
+    payload = {
+        "model": "Qwen/Qwen2.5-VL-7B-Instruct",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt_visuel},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{images_b64[0]}"},
+                    },
+                ],
+            }
+        ],
+        "max_tokens": 400,
+        "temperature": 0.01,
+    }
+
     try:
         with httpx.Client(timeout=120.0) as client:
             response = client.post(
-                settings.hf_api_vision_url,
+                "https://router.huggingface.co/v1/chat/completions",
                 headers=headers,
-                data={"inputs": prompt_visuel},
-                files={"image": base64.b64decode(images_b64[0])},
+                json=payload,
             )
             response.raise_for_status()
             result = response.json()
 
-            # Tenter de parser le JSON
-            texte = str(result)
+            texte = result["choices"][0]["message"]["content"]
             match = re.search(r'\{.*\}', texte, re.DOTALL)
             if match:
                 try:
@@ -96,6 +118,7 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
                 except json.JSONDecodeError:
                     pass
 
+            logger.warning(f"Réponse vision non-JSON, contenu brut : {texte[:300]}")
             return {
                 "numero_acte_haut": False,
                 "tampon_DGFP": False,

@@ -28,7 +28,14 @@ def _generer_via_api_hf(
     max_tokens: int = 512,
     temperature: float = 0.01,
 ) -> str:
-    """Appelle l'API Hugging Face Inference pour la génération."""
+    """Appelle l'API Hugging Face Inference (chat completions) pour la génération.
+
+    Utilise le endpoint "router" compatible OpenAI, seul format fiable
+    aujourd'hui pour un modèle instruct/chat comme Qwen2.5-14B-Instruct.
+    L'ancien format text-generation legacy ({"inputs": prompt}) envoyé
+    directement au modèle est déprécié pour ce type de modèle et pouvait
+    renvoyer une erreur ou un texte non exploitable.
+    """
     settings = get_settings()
 
     headers = {
@@ -36,31 +43,27 @@ def _generer_via_api_hf(
         "Content-Type": "application/json",
     }
 
+    # Le nom du modèle est déduit de l'URL configurée (HF_API_LLM_URL),
+    # pour rester compatible avec la configuration existante (.env).
+    modele = settings.hf_api_llm_url.rstrip("/").split("/models/")[-1]
+
     payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": max_tokens,
-            "temperature": max(temperature, 0.01),
-            "do_sample": temperature > 0,
-            "return_full_text": False,
-        },
+        "model": modele,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": max(temperature, 0.01),
     }
 
     try:
         with httpx.Client(timeout=120.0) as client:
             response = client.post(
-                settings.hf_api_llm_url,
+                "https://router.huggingface.co/v1/chat/completions",
                 headers=headers,
                 json=payload,
             )
             response.raise_for_status()
             result = response.json()
-
-            if isinstance(result, list) and len(result) > 0:
-                return result[0].get("generated_text", "").strip()
-            elif isinstance(result, dict):
-                return result.get("generated_text", "").strip()
-            return str(result)
+            return result["choices"][0]["message"]["content"].strip()
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 503:
