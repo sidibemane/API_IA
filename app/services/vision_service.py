@@ -150,7 +150,9 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
 
             texte_json = candidats[0]["content"]["parts"][0]["text"]
             import json
-            return json.loads(texte_json)
+            resultat = json.loads(texte_json)
+            logger.info(f"Réponse Gemini vision (pages envoyées={nb_pages}) : {resultat}")
+            return resultat
 
     except httpx.HTTPStatusError as e:
         logger.error(f"Erreur API Gemini vision : {e.response.status_code} — {e.response.text}")
