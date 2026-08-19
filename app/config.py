@@ -27,6 +27,10 @@ class Settings(BaseSettings):
         "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-VL-7B-Instruct"
     )
 
+    # Gemini (vision multimodale — tampons, signature, cachet)
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    gemini_vision_model: str = os.getenv("GEMINI_VISION_MODEL", "gemini-3.6-flash")
+
     # Modèles locaux (si mode cpu_local)
     model_llm_local: str = os.getenv("MODEL_LLM_LOCAL", "Qwen/Qwen2.5-3B-Instruct")
     model_vision_local: str = ""  # Désactivé en CPU

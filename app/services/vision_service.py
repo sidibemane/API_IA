@@ -1,22 +1,58 @@
 """
-Service Vision — Adapté CPU.
-En mode api_hf : appelle l'API HF Inference avec l'image.
-En mode cpu_local : vision DÉSACTIVÉE (trop lourd pour CPU).
+Service Vision — Analyse multimodale des tampons, signature et cachet du
+Ministre sur le PDF de l'acte.
+
+Utilise l'API Gemini (Google) plutôt que Hugging Face : contrairement aux
+modèles servis via HF Inference Providers (instables — modèles retirés ou
+mal routés selon les fournisseurs disponibles à un instant donné), Gemini
+est appelé directement chez son éditeur, avec une sortie JSON garantie par
+schéma strict (responseSchema) : plus besoin de deviner/parser un texte
+libre en espérant qu'il contienne du JSON valide.
 """
 
 import base64
-import json
 import logging
-import re
+
 import httpx
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Schéma strict : Gemini est contraint de renvoyer EXACTEMENT cette forme,
+# il ne peut pas "oublier" un champ ou répondre en texte libre.
+SCHEMA_ANALYSE_VISUELLE = {
+    "type": "OBJECT",
+    "properties": {
+        "numero_acte_haut": {"type": "BOOLEAN"},
+        "tampon_DGFP": {"type": "BOOLEAN"},
+        "tampon_DIRSOLDE": {"type": "BOOLEAN"},
+        "tampon_DPB": {"type": "BOOLEAN"},
+        "tampon_CF": {"type": "BOOLEAN"},
+        "tampon_DP": {"type": "BOOLEAN"},
+        "signature_cachet_ministre_bas": {"type": "BOOLEAN"},
+        "details": {"type": "STRING"},
+    },
+    "required": [
+        "numero_acte_haut", "tampon_DGFP", "tampon_DIRSOLDE", "tampon_DPB",
+        "tampon_CF", "tampon_DP", "signature_cachet_ministre_bas", "details",
+    ],
+}
+
+REPONSE_PAR_DEFAUT = {
+    "numero_acte_haut": False,
+    "tampon_DGFP": False,
+    "tampon_DIRSOLDE": False,
+    "tampon_DPB": False,
+    "tampon_CF": False,
+    "tampon_DP": False,
+    "signature_cachet_ministre_bas": False,
+    "details": "",
+}
+
 
 def extraire_pages_pdf(pdf_bytes: bytes) -> list[str]:
-    """Extrait la 1ère et dernière page en base64."""
+    """Extrait la 1ère et dernière page en base64 (PNG)."""
     import fitz
 
     images_b64 = []
@@ -39,114 +75,84 @@ def extraire_pages_pdf(pdf_bytes: bytes) -> list[str]:
 
 
 def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
-    """Analyse visuelle adaptée CPU."""
+    """Analyse visuelle du PDF (tampons, signature, cachet) via Gemini."""
     settings = get_settings()
 
     if settings.llm_mode == "cpu_local":
         logger.warning("⚠️ Vision désactivée en mode CPU local")
-        return {
-            "numero_acte_haut": False,
-            "tampon_DGFP": False,
-            "tampon_DIRSOLDE": False,
-            "tampon_DPB": False,
-            "tampon_CF": False,
-            "tampon_DP": False,
-            "signature_cachet_ministre_bas": False,
-            "details": "Vision désactivée en mode CPU. Vérification manuelle requise.",
-            "erreur": "Vision non disponible sur CPU",
-        }
+        return {**REPONSE_PAR_DEFAUT, "erreur": "Vision non disponible sur CPU",
+                "details": "Vision désactivée en mode CPU. Vérification manuelle requise."}
 
-    # Mode API HF
+    if not settings.gemini_api_key:
+        logger.error("GEMINI_API_KEY manquant dans .env — vision désactivée.")
+        return {**REPONSE_PAR_DEFAUT, "erreur": "GEMINI_API_KEY manquant",
+                "details": "Ajoute GEMINI_API_KEY dans le fichier .env du serveur."}
+
     images_b64 = extraire_pages_pdf(pdf_bytes)
     if not images_b64:
-        return {"erreur": "Impossible d'extraire les images du PDF."}
+        return {**REPONSE_PAR_DEFAUT, "erreur": "Impossible d'extraire les images du PDF."}
 
     prompt_visuel = (
-        "Analyse cette image d'un document administratif sénégalais. "
-        "Vérifie : numéro d'acte en haut, tampons (DGFP, DIRSOLDE, DPB, CF, DP), "
-        "signature du ministre en bas. "
-        "Réponds UNIQUEMENT avec un objet JSON, sans aucun texte avant ou après, "
-        "au format exact : {\"numero_acte_haut\": bool, \"tampon_DGFP\": bool, "
-        "\"tampon_DIRSOLDE\": bool, \"tampon_DPB\": bool, \"tampon_CF\": bool, "
-        "\"tampon_DP\": bool, \"signature_cachet_ministre_bas\": bool, "
-        "\"details\": \"...\"}"
+        "Analyse cette image d'un document administratif de la Fonction "
+        "Publique du Sénégal. Cherche précisément :\n"
+        "- le numéro de l'acte en haut de la page (numero_acte_haut)\n"
+        "- les tampons officiels apposés sur le document : DGFP, DIRSOLDE, "
+        "DPB, CF, DP (un tampon par direction, généralement circulaire ou "
+        "rectangulaire, avec le nom de la direction)\n"
+        "- la signature manuscrite ET le cachet du Ministre en bas du document "
+        "(signature_cachet_ministre_bas)\n"
+        "Réponds true uniquement si tu es raisonnablement certain de la "
+        "présence de l'élément (visible, lisible). Réponds false si absent, "
+        "illisible, ou en cas de doute. Dans 'details', explique brièvement "
+        "ce que tu as repéré ou pas."
     )
 
     headers = {
-        "Authorization": f"Bearer {settings.hf_token}",
+        "x-goog-api-key": settings.gemini_api_key,
         "Content-Type": "application/json",
     }
 
-    # API HF Inference — endpoint "router" compatible OpenAI chat completions,
-    # seul format actuellement supporté pour les modèles vision-langage (VLM)
-    # comme Qwen2.5-VL. L'ancien format multipart (data+files) ne fonctionne
-    # pas avec ce type de modèle et provoquait un retour vide/non-JSON, d'où
-    # les tampons systématiquement signalés comme absents.
     payload = {
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct",
-        "messages": [
+        "contents": [
             {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt_visuel},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{images_b64[0]}"},
-                    },
-                ],
+                "parts": [
+                    {"text": prompt_visuel},
+                    {"inline_data": {"mime_type": "image/png", "data": images_b64[0]}},
+                ]
             }
         ],
-        "max_tokens": 400,
-        "temperature": 0.01,
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": SCHEMA_ANALYSE_VISUELLE,
+            "temperature": 0.0,
+        },
     }
+
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.gemini_vision_model}:generateContent"
+    )
 
     try:
         with httpx.Client(timeout=120.0) as client:
-            response = client.post(
-                "https://router.huggingface.co/v1/chat/completions",
-                headers=headers,
-                json=payload,
-            )
+            response = client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             result = response.json()
 
-            texte = result["choices"][0]["message"]["content"]
-            match = re.search(r'\{.*\}', texte, re.DOTALL)
-            if match:
-                try:
-                    return json.loads(match.group(0))
-                except json.JSONDecodeError:
-                    pass
+            candidats = result.get("candidates", [])
+            if not candidats:
+                bloque = result.get("promptFeedback", {}).get("blockReason")
+                logger.warning(f"Aucune réponse Gemini (candidates vide). Bloqué : {bloque}")
+                return {**REPONSE_PAR_DEFAUT, "erreur": f"Réponse vide (blockReason={bloque})"}
 
-            logger.warning(f"Réponse vision non-JSON, contenu brut : {texte[:300]}")
-            return {
-                "numero_acte_haut": False,
-                "tampon_DGFP": False,
-                "tampon_DIRSOLDE": False,
-                "tampon_DPB": False,
-                "tampon_CF": False,
-                "tampon_DP": False,
-                "signature_cachet_ministre_bas": False,
-                "details": texte[:500],
-            }
+            texte_json = candidats[0]["content"]["parts"][0]["text"]
+            import json
+            return json.loads(texte_json)
 
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 503:
-            logger.warning("Modèle vision HF en cold start...")
-            return {
-                "erreur": "Modèle vision en chargement, réessayez dans 30s",
-                "numero_acte_haut": False,
-                "tampon_DGFP": False,
-                "tampon_DIRSOLDE": False,
-                "tampon_DPB": False,
-                "tampon_CF": False,
-                "tampon_DP": False,
-                "signature_cachet_ministre_bas": False,
-                "details": "Cold start du modèle vision",
-            }
-        logger.error(f"Erreur API vision : {e}")
-        return {"erreur": str(e)}
+        logger.error(f"Erreur API Gemini vision : {e.response.status_code} — {e.response.text}")
+        return {**REPONSE_PAR_DEFAUT, "erreur": str(e)}
 
     except Exception as e:
         logger.error(f"Erreur vision : {e}")
-        return {"erreur": str(e)}
+        return {**REPONSE_PAR_DEFAUT, "erreur": str(e)}
