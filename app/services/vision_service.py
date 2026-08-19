@@ -136,6 +136,15 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
         f"{settings.gemini_vision_model}:generateContent"
     )
 
+    return _appeler_gemini_avec_retry(url, headers, payload)
+
+
+def _appeler_gemini_avec_retry(url: str, headers: dict, payload: dict, tentative: int = 1) -> dict:
+    """Appelle Gemini ; en cas de 429 (quota dépassé), attend le délai
+    indiqué par Google puis réessaie automatiquement (jusqu'à 3 tentatives)."""
+    import re
+    import time
+
     try:
         with httpx.Client(timeout=120.0) as client:
             response = client.post(url, headers=headers, json=payload)
@@ -150,10 +159,21 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
 
             texte_json = candidats[0]["content"]["parts"][0]["text"]
             resultat = json.loads(texte_json)
-            logger.info(f"Réponse Gemini vision (pages envoyées={nb_pages}) : {resultat}")
+            logger.info(f"Réponse Gemini vision : {resultat}")
             return resultat
 
     except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429 and tentative <= 3:
+            corps = e.response.text
+            match = re.search(r"retry in (\d+(?:\.\d+)?)s", corps)
+            delai = float(match.group(1)) + 1 if match else 15.0
+            logger.warning(
+                f"Quota Gemini dépassé (429), tentative {tentative}/3 — "
+                f"attente de {delai:.0f}s avant réessai automatique."
+            )
+            time.sleep(delai)
+            return _appeler_gemini_avec_retry(url, headers, payload, tentative + 1)
+
         logger.error(f"Erreur API Gemini vision : {e.response.status_code} — {e.response.text}")
         return {**REPONSE_PAR_DEFAUT, "erreur": str(e)}
 
