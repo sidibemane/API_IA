@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_vision_model: str = os.getenv("GEMINI_VISION_MODEL", "gemini-3.6-flash")
 
+    # Modèle de vision local (Moondream2 via llama-server) — 100% open source
+    local_vlm_url: str = os.getenv("LOCAL_VLM_URL", "http://127.0.0.1:8081/v1/chat/completions")
+
     # Modèles locaux (si mode cpu_local)
     model_llm_local: str = os.getenv("MODEL_LLM_LOCAL", "Qwen/Qwen2.5-3B-Instruct")
     model_vision_local: str = ""  # Désactivé en CPU

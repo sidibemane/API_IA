@@ -1,45 +1,31 @@
 """
-Service Vision — Analyse multimodale des tampons, signature et cachet du
-Ministre sur le PDF de l'acte, via Gemini.
+Service Vision — 100% open source, auto-hébergé, sans API externe.
 
-Constat important (validé sur les vrais documents) : les tampons DGFP,
-DIRSOLDE, DPB, CF, DP sont dessinés en pointillés (contours vectoriels
-formant les lettres), PAS comme du texte extractible ni comme une image
-incrustée classique. Une tentative d'extraction native (texte + images
-PyMuPDF) a donc échoué à les détecter — seule une vraie analyse visuelle
-(comme fait un humain qui regarde la page) peut les repérer correctement.
-D'où le retour à un LLM de vision (Gemini), qui avait déjà démontré
-détecter correctement ce style de tampon en pointillés une fois le prompt
-ajusté en conséquence.
+Utilise Moondream2 (licence Apache 2.0, ~1 milliard de paramètres, conçu
+pour tourner efficacement sur CPU) servi localement via llama-server
+(llama.cpp), qui expose une API HTTP compatible OpenAI sur le serveur
+lui-même — aucune connexion internet requise après le téléchargement
+initial du modèle, aucun coût, aucune limite de requêtes.
+
+Prérequis sur le serveur (voir instructions de déploiement) :
+  1. llama.cpp installé (binaire llama-server)
+  2. Le service llama-server tourne en arrière-plan (idéalement via
+     systemd), servant le modèle sur LOCAL_VLM_URL (par défaut
+     http://127.0.0.1:8081)
+
+Ce fichier ne fait AUCUN appel réseau externe — tout reste sur la machine.
 """
 
 import base64
 import json
 import logging
+import re
 
 import httpx
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
-
-SCHEMA_ANALYSE_VISUELLE = {
-    "type": "OBJECT",
-    "properties": {
-        "numero_acte_haut": {"type": "BOOLEAN"},
-        "tampon_DGFP": {"type": "BOOLEAN"},
-        "tampon_DIRSOLDE": {"type": "BOOLEAN"},
-        "tampon_DPB": {"type": "BOOLEAN"},
-        "tampon_CF": {"type": "BOOLEAN"},
-        "tampon_DP": {"type": "BOOLEAN"},
-        "signature_cachet_ministre_bas": {"type": "BOOLEAN"},
-        "details": {"type": "STRING"},
-    },
-    "required": [
-        "numero_acte_haut", "tampon_DGFP", "tampon_DIRSOLDE", "tampon_DPB",
-        "tampon_CF", "tampon_DP", "signature_cachet_ministre_bas", "details",
-    ],
-}
 
 REPONSE_PAR_DEFAUT = {
     "numero_acte_haut": False,
@@ -52,9 +38,33 @@ REPONSE_PAR_DEFAUT = {
     "details": "",
 }
 
+PROMPT_VISUEL = (
+    "Voici une page d'un document administratif de la Fonction Publique du "
+    "Sénégal.\n\n"
+    "IMPORTANT sur la forme des tampons : sur ces documents, les tampons "
+    "DGFP, DIRSOLDE, DPB, CF, DP sont dessinés comme de GRANDES LETTRES "
+    "FORMÉES DE POINTILLÉS (un contour en pointillés dessinant chaque "
+    "lettre du nom de la direction). Ce style en pointillés EST la façon "
+    "normale dont un tampon apposé apparaît sur ces documents — ce n'est "
+    "PAS un espace vide à ignorer.\n\n"
+    "Réponds UNIQUEMENT avec un objet JSON, sans aucun texte avant ou "
+    "après, au format exact :\n"
+    '{"numero_acte_haut": bool, "tampon_DGFP": bool, "tampon_DIRSOLDE": bool, '
+    '"tampon_DPB": bool, "tampon_CF": bool, "tampon_DP": bool, '
+    '"signature_cachet_ministre_bas": bool, "details": "..."}\n\n'
+    "numero_acte_haut : true seulement si un vrai numéro (des chiffres) "
+    "apparaît en haut de page — false si tu vois seulement 'N° …' avec des "
+    "points de suspension.\n"
+    "tampon_XXX : true dès que tu distingues les lettres en pointillés "
+    "formant ce nom de direction, peu importe leur netteté.\n"
+    "signature_cachet_ministre_bas : true si une signature manuscrite et/ou "
+    "un cachet rond sont visibles en bas de page.\n"
+    "details : précise brièvement ce que tu as trouvé et où."
+)
+
 
 def extraire_pages_pdf(pdf_bytes: bytes) -> list[str]:
-    """Extrait la 1ère et dernière page en base64 (PNG), en haute résolution
+    """Extrait la 1ère et dernière page en base64 (PNG), haute résolution
     pour que les tampons en pointillés (fins) restent lisibles."""
     import fitz
 
@@ -74,109 +84,77 @@ def extraire_pages_pdf(pdf_bytes: bytes) -> list[str]:
 
 
 def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
-    """Analyse visuelle du PDF (tampons, signature, cachet) via Gemini."""
+    """Analyse le PDF via le modèle de vision local (Moondream2 / llama-server)."""
     settings = get_settings()
-
-    if settings.llm_mode == "cpu_local":
-        logger.warning("⚠️ Vision désactivée en mode CPU local")
-        return {**REPONSE_PAR_DEFAUT, "erreur": "Vision non disponible sur CPU"}
-
-    if not settings.gemini_api_key:
-        logger.error("GEMINI_API_KEY manquant dans .env — vision désactivée.")
-        return {**REPONSE_PAR_DEFAUT, "erreur": "GEMINI_API_KEY manquant"}
 
     images_b64 = extraire_pages_pdf(pdf_bytes)
     if not images_b64:
         return {**REPONSE_PAR_DEFAUT, "erreur": "Impossible d'extraire les images du PDF."}
 
-    nb_pages = len(images_b64)
-    prompt_visuel = (
-        f"Voici {nb_pages} page(s) d'un document administratif de la Fonction "
-        "Publique du Sénégal (première page, puis dernière page si le document "
-        "en a plusieurs). Examine TOUTES les pages fournies avant de répondre.\n\n"
-        "IMPORTANT sur la forme des tampons : sur ces documents, les tampons "
-        "DGFP, DIRSOLDE, DPB, CF, DP sont dessinés comme de GRANDES LETTRES "
-        "FORMÉES DE POINTILLÉS (un contour en pointillés dessinant chaque "
-        "lettre du nom de la direction, ex: 'D · G · F · P' en pointillés). "
-        "Ce style en pointillés EST la façon normale dont un tampon apposé "
-        "apparaît sur ces documents — ce n'est PAS un espace vide ni un simple "
-        "filigrane à ignorer. Réponds true dès que tu distingues ces lettres "
-        "en pointillés formant le nom d'une direction, peu importe leur "
-        "netteté.\n\n"
-        "Cherche précisément sur l'ensemble des pages :\n"
-        "- le numéro de l'acte en haut de la première page (numero_acte_haut) "
-        "— absent si tu vois seulement 'N° …' avec des points de suspension\n"
-        "- les tampons DGFP, DIRSOLDE, DPB, CF, DP (lettres en pointillés, "
-        "voir consigne ci-dessus)\n"
-        "- la signature manuscrite ET le cachet rond du Ministre, généralement "
-        "en bas de la dernière page (signature_cachet_ministre_bas)\n"
-        "Réponds false uniquement si l'élément n'apparaît vraiment nulle part "
-        "sur aucune page fournie. Dans 'details', précise sur quelle page et "
-        "sous quelle forme (pointillés, cachet plein, etc.) tu as trouvé "
-        "chaque élément détecté."
-    )
+    # On analyse la première page (numéro) — pour la signature/cachet en fin
+    # de document, on analyse aussi la dernière page si elle est différente.
+    resultat_global = dict(REPONSE_PAR_DEFAUT)
+    details_par_page = []
 
-    headers = {"x-goog-api-key": settings.gemini_api_key, "Content-Type": "application/json"}
+    for i, img_b64 in enumerate(images_b64):
+        resultat_page = _analyser_une_page(settings, img_b64)
+        if "erreur" in resultat_page:
+            return resultat_page  # erreur réseau/serveur : on arrête là
 
-    parts = [{"text": prompt_visuel}]
-    for img_b64 in images_b64:
-        parts.append({"inline_data": {"mime_type": "image/png", "data": img_b64}})
+        # Fusion : un booléen devient True dès qu'une page le confirme
+        for cle in REPONSE_PAR_DEFAUT:
+            if cle == "details":
+                continue
+            if resultat_page.get(cle):
+                resultat_global[cle] = True
 
+        details_par_page.append(f"Page {i + 1}: {resultat_page.get('details', '')}")
+
+    resultat_global["details"] = " | ".join(details_par_page)
+    logger.info(f"Résultat analyse visuelle (Moondream2 local) : {resultat_global}")
+    return resultat_global
+
+
+def _analyser_une_page(settings, img_b64: str) -> dict:
     payload = {
-        "contents": [{"parts": parts}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseSchema": SCHEMA_ANALYSE_VISUELLE,
-            "temperature": 0.0,
-        },
+        "model": "moondream2",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": PROMPT_VISUEL},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}},
+                ],
+            }
+        ],
+        "max_tokens": 400,
+        "temperature": 0.0,
     }
 
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{settings.gemini_vision_model}:generateContent"
-    )
-
-    return _appeler_gemini_avec_retry(url, headers, payload)
-
-
-def _appeler_gemini_avec_retry(url: str, headers: dict, payload: dict, tentative: int = 1) -> dict:
-    """Appelle Gemini ; en cas de 429 (quota dépassé), attend le délai
-    indiqué par Google puis réessaie automatiquement (jusqu'à 3 tentatives)."""
-    import re
-    import time
-
     try:
-        with httpx.Client(timeout=120.0) as client:
-            response = client.post(url, headers=headers, json=payload)
+        with httpx.Client(timeout=180.0) as client:
+            response = client.post(settings.local_vlm_url, json=payload)
             response.raise_for_status()
             result = response.json()
 
-            candidats = result.get("candidates", [])
-            if not candidats:
-                bloque = result.get("promptFeedback", {}).get("blockReason")
-                logger.warning(f"Aucune réponse Gemini (candidates vide). Bloqué : {bloque}")
-                return {**REPONSE_PAR_DEFAUT, "erreur": f"Réponse vide (blockReason={bloque})"}
+            texte = result["choices"][0]["message"]["content"]
+            match = re.search(r'\{.*\}', texte, re.DOTALL)
+            if match:
+                try:
+                    return json.loads(match.group(0))
+                except json.JSONDecodeError:
+                    pass
 
-            texte_json = candidats[0]["content"]["parts"][0]["text"]
-            resultat = json.loads(texte_json)
-            logger.info(f"Réponse Gemini vision : {resultat}")
-            return resultat
+            logger.warning(f"Réponse Moondream2 non-JSON, contenu brut : {texte[:300]}")
+            return {**REPONSE_PAR_DEFAUT, "details": texte[:500]}
 
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 429 and tentative <= 3:
-            corps = e.response.text
-            match = re.search(r"retry in (\d+(?:\.\d+)?)s", corps)
-            delai = float(match.group(1)) + 1 if match else 15.0
-            logger.warning(
-                f"Quota Gemini dépassé (429), tentative {tentative}/3 — "
-                f"attente de {delai:.0f}s avant réessai automatique."
-            )
-            time.sleep(delai)
-            return _appeler_gemini_avec_retry(url, headers, payload, tentative + 1)
-
-        logger.error(f"Erreur API Gemini vision : {e.response.status_code} — {e.response.text}")
-        return {**REPONSE_PAR_DEFAUT, "erreur": str(e)}
+    except httpx.ConnectError as e:
+        logger.error(
+            f"Impossible de joindre le serveur de vision local ({settings.local_vlm_url}). "
+            f"Vérifie que llama-server tourne bien : {e}"
+        )
+        return {**REPONSE_PAR_DEFAUT, "erreur": "Serveur de vision local injoignable — vérifie que llama-server tourne."}
 
     except Exception as e:
-        logger.error(f"Erreur vision : {e}")
+        logger.error(f"Erreur vision (Moondream2 local) : {e}")
         return {**REPONSE_PAR_DEFAUT, "erreur": str(e)}
