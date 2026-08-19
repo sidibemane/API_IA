@@ -153,6 +153,7 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
     )
 
     logger.info(f"Résultat analyse visuelle (extraction native) : {resultat}")
+    logger.info(f"TEXTE COMPLET EXTRAIT DU PDF (diagnostic) : {texte_complet!r}")
     return resultat
 
 
