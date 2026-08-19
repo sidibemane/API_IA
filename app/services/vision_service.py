@@ -39,27 +39,16 @@ REPONSE_PAR_DEFAUT = {
 }
 
 PROMPT_VISUEL = (
-    "Voici une page d'un document administratif de la Fonction Publique du "
-    "Sénégal.\n\n"
-    "IMPORTANT sur la forme des tampons : sur ces documents, les tampons "
-    "DGFP, DIRSOLDE, DPB, CF, DP sont dessinés comme de GRANDES LETTRES "
-    "FORMÉES DE POINTILLÉS (un contour en pointillés dessinant chaque "
-    "lettre du nom de la direction). Ce style en pointillés EST la façon "
-    "normale dont un tampon apposé apparaît sur ces documents — ce n'est "
-    "PAS un espace vide à ignorer.\n\n"
-    "Réponds UNIQUEMENT avec un objet JSON, sans aucun texte avant ou "
-    "après, au format exact :\n"
+    "Page d'un document administratif sénégalais. Les tampons DGFP, "
+    "DIRSOLDE, DPB, CF, DP sont dessinés en GRANDES LETTRES POINTILLÉES — "
+    "ce style compte comme un tampon présent.\n"
+    "Réponds UNIQUEMENT en JSON :\n"
     '{"numero_acte_haut": bool, "tampon_DGFP": bool, "tampon_DIRSOLDE": bool, '
     '"tampon_DPB": bool, "tampon_CF": bool, "tampon_DP": bool, '
-    '"signature_cachet_ministre_bas": bool, "details": "..."}\n\n'
-    "numero_acte_haut : true seulement si un vrai numéro (des chiffres) "
-    "apparaît en haut de page — false si tu vois seulement 'N° …' avec des "
-    "points de suspension.\n"
-    "tampon_XXX : true dès que tu distingues les lettres en pointillés "
-    "formant ce nom de direction, peu importe leur netteté.\n"
-    "signature_cachet_ministre_bas : true si une signature manuscrite et/ou "
-    "un cachet rond sont visibles en bas de page.\n"
-    "details : précise brièvement ce que tu as trouvé et où."
+    '"signature_cachet_ministre_bas": bool, "details": "..."}\n'
+    "numero_acte_haut=false si tu vois 'N° …' (points de suspension, pas de "
+    "chiffres). tampon_XXX=true si tu vois les lettres pointillées du nom. "
+    "signature_cachet_ministre_bas=true si signature/cachet visible en bas."
 )
 
 
@@ -72,11 +61,11 @@ def extraire_pages_pdf(pdf_bytes: bytes) -> list[str]:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
     if len(doc) >= 1:
-        pix1 = doc[0].get_pixmap(dpi=200)
+        pix1 = doc[0].get_pixmap(dpi=100)
         images_b64.append(base64.b64encode(pix1.tobytes("png")).decode("utf-8"))
 
     if len(doc) >= 2:
-        pix_last = doc[-1].get_pixmap(dpi=200)
+        pix_last = doc[-1].get_pixmap(dpi=100)
         images_b64.append(base64.b64encode(pix_last.tobytes("png")).decode("utf-8"))
 
     doc.close()
@@ -116,28 +105,22 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
 
 
 def _analyser_une_page(settings, img_b64: str) -> dict:
+    url_completion = settings.local_vlm_url.replace("/v1/chat/completions", "/completion")
+
     payload = {
-        "model": "moondream2",
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": PROMPT_VISUEL},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}},
-                ],
-            }
-        ],
-        "max_tokens": 400,
+        "prompt": "<__media__>\n" + PROMPT_VISUEL,
+        "multimodal_data": [img_b64],
+        "n_predict": 400,
         "temperature": 0.0,
     }
 
     try:
         with httpx.Client(timeout=180.0) as client:
-            response = client.post(settings.local_vlm_url, json=payload)
+            response = client.post(url_completion, json=payload)
             response.raise_for_status()
             result = response.json()
 
-            texte = result["choices"][0]["message"]["content"]
+            texte = result.get("content", "")
             match = re.search(r'\{.*\}', texte, re.DOTALL)
             if match:
                 try:
@@ -147,6 +130,10 @@ def _analyser_une_page(settings, img_b64: str) -> dict:
 
             logger.warning(f"Réponse Moondream2 non-JSON, contenu brut : {texte[:300]}")
             return {**REPONSE_PAR_DEFAUT, "details": texte[:500]}
+
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Erreur HTTP llama-server : {e.response.status_code} — {e.response.text}")
+        return {**REPONSE_PAR_DEFAUT, "erreur": f"{e.response.status_code}: {e.response.text[:300]}"}
 
     except httpx.ConnectError as e:
         logger.error(
