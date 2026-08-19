@@ -92,19 +92,25 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
     if not images_b64:
         return {**REPONSE_PAR_DEFAUT, "erreur": "Impossible d'extraire les images du PDF."}
 
+    nb_pages = len(images_b64)
     prompt_visuel = (
-        "Analyse cette image d'un document administratif de la Fonction "
-        "Publique du Sénégal. Cherche précisément :\n"
-        "- le numéro de l'acte en haut de la page (numero_acte_haut)\n"
-        "- les tampons officiels apposés sur le document : DGFP, DIRSOLDE, "
-        "DPB, CF, DP (un tampon par direction, généralement circulaire ou "
-        "rectangulaire, avec le nom de la direction)\n"
-        "- la signature manuscrite ET le cachet du Ministre en bas du document "
-        "(signature_cachet_ministre_bas)\n"
+        f"Voici {nb_pages} page(s) d'un document administratif de la Fonction "
+        "Publique du Sénégal (première page, puis dernière page si le document "
+        "en a plusieurs). Examine TOUTES les pages fournies avant de répondre — "
+        "les tampons et signatures se trouvent souvent en fin de document. "
+        "Cherche précisément sur l'ensemble des pages :\n"
+        "- le numéro de l'acte en haut de la première page (numero_acte_haut)\n"
+        "- les tampons officiels apposés sur le document, sur n'importe quelle "
+        "page fournie : DGFP, DIRSOLDE, DPB, CF, DP (un tampon par direction, "
+        "généralement circulaire ou rectangulaire, avec le nom de la direction "
+        "lisible dessus)\n"
+        "- la signature manuscrite ET le cachet du Ministre, généralement en "
+        "bas de la dernière page (signature_cachet_ministre_bas)\n"
         "Réponds true uniquement si tu es raisonnablement certain de la "
-        "présence de l'élément (visible, lisible). Réponds false si absent, "
-        "illisible, ou en cas de doute. Dans 'details', explique brièvement "
-        "ce que tu as repéré ou pas."
+        "présence de l'élément (visible, lisible) sur au moins une des pages "
+        "fournies. Réponds false si absent de toutes les pages, illisible, ou "
+        "en cas de doute. Dans 'details', précise sur quelle page tu as trouvé "
+        "chaque élément."
     )
 
     headers = {
@@ -112,15 +118,12 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
         "Content-Type": "application/json",
     }
 
+    parts = [{"text": prompt_visuel}]
+    for img_b64 in images_b64:
+        parts.append({"inline_data": {"mime_type": "image/png", "data": img_b64}})
+
     payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt_visuel},
-                    {"inline_data": {"mime_type": "image/png", "data": images_b64[0]}},
-                ]
-            }
-        ],
+        "contents": [{"parts": parts}],
         "generationConfig": {
             "responseMimeType": "application/json",
             "responseSchema": SCHEMA_ANALYSE_VISUELLE,
