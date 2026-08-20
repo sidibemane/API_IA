@@ -75,82 +75,92 @@ def analyser_visuel_acte(pdf_bytes: bytes) -> dict:
 #  BACKEND LOCAL (Moondream2 / llama-server) — question par question
 # ═══════════════════════════════════════════════════════════
 
-QUESTIONS_LOCAL = [
-    ("tampon_DGFP", "Vois-tu les lettres en pointillés 'DGFP' quelque part sur cette image ?"),
-    ("tampon_DIRSOLDE", "Vois-tu les lettres en pointillés 'DIRSOLDE' quelque part sur cette image ?"),
-    ("tampon_DPB", "Vois-tu les lettres en pointillés 'DPB' quelque part sur cette image ?"),
-    ("tampon_CF", "Vois-tu les lettres en pointillés 'CF' quelque part sur cette image ?"),
-    ("tampon_DP", "Vois-tu les lettres en pointillés 'DP' (seulement DP, pas DPB) quelque part sur cette image ?"),
-    ("numero_acte_haut", "En haut de l'image, vois-tu un numéro avec de vrais chiffres (pas juste des points de suspension) ?"),
-    ("signature_cachet_ministre_bas", "En bas de l'image, vois-tu une signature manuscrite ou un cachet rond ?"),
-]
+PREFIXE_LOCAL = "<__media__>\n"
 
-PREFIXE_LOCAL = "<__media__>\nDocument administratif sénégalais.\n"
+PROMPT_TRANSCRIPTION = (
+    "Décris précisément et en détail tout ce que tu vois d'écrit sur cette "
+    "image : le numéro en haut de page (recopie-le exactement, ou dis "
+    "'aucun numéro' si tu vois seulement des points de suspension), chaque "
+    "tampon ou étiquette (même en pointillés — recopie les lettres que tu "
+    "distingues), et s'il y a une signature manuscrite ou un cachet en bas "
+    "de page. Sois exhaustif : ne laisse rien de côté, même les éléments "
+    "peu visibles ou partiels."
+)
 
 
 def _analyser_via_local(pdf_bytes: bytes, settings) -> dict:
+    import difflib
+
     images_b64 = extraire_pages_pdf(pdf_bytes)
     if not images_b64:
         return {**REPONSE_PAR_DEFAUT, "erreur": "Impossible d'extraire les images du PDF."}
 
     resultat = dict(REPONSE_PAR_DEFAUT)
-    details = []
     url = settings.local_vlm_url.replace("/v1/chat/completions", "/completion")
-
-    # Page 1 : tampons + numéro
     t0 = time.time()
-    for cle, question in QUESTIONS_LOCAL:
-        if cle == "signature_cachet_ministre_bas" and len(images_b64) > 1:
-            continue  # on la posera sur la dernière page si elle existe
-        reponse, erreur = _poser_question_locale(url, images_b64[0], question)
-        if erreur:
-            return {**REPONSE_PAR_DEFAUT, "erreur": erreur}
-        resultat[cle] = reponse
-        details.append(f"{cle}={reponse}")
 
-    # Dernière page (si différente) : signature/cachet
-    if len(images_b64) > 1:
-        cle, question = "signature_cachet_ministre_bas", QUESTIONS_LOCAL[-1][1]
-        reponse, erreur = _poser_question_locale(url, images_b64[-1], question)
+    transcriptions = []
+    for img_b64 in images_b64:
+        texte, erreur = _transcrire_page_locale(url, img_b64)
         if erreur:
             return {**REPONSE_PAR_DEFAUT, "erreur": erreur}
-        resultat[cle] = reponse
-        details.append(f"{cle}={reponse}")
+        transcriptions.append(texte)
+
+    texte_complet = " | ".join(transcriptions).upper()
+
+    def contient_approximativement(code: str) -> bool:
+        # Recherche directe d'abord (rapide et fiable si bien transcrit)
+        if code in texte_complet:
+            return True
+        # Sinon, recherche approximative dans chaque mot (tolère 1 erreur OCR)
+        mots = re.findall(r"[A-Z]{2,}", texte_complet)
+        for mot in mots:
+            if difflib.SequenceMatcher(None, mot, code).ratio() >= 0.75:
+                return True
+        return False
+
+    resultat["tampon_DGFP"] = contient_approximativement("DGFP")
+    resultat["tampon_DIRSOLDE"] = contient_approximativement("DIRSOLDE") or contient_approximativement("DS")
+    resultat["tampon_DPB"] = contient_approximativement("DPB")
+    resultat["tampon_CF"] = contient_approximativement("CF")
+    resultat["tampon_DP"] = contient_approximativement("DP") and not resultat["tampon_DPB"]
+    resultat["numero_acte_haut"] = bool(re.search(r"\bN[°o]?\s*\d{2,}", texte_complet))
+    resultat["signature_cachet_ministre_bas"] = any(
+        m in texte_complet for m in ["SIGNATURE", "CACHET", "MINISTRE", "SIGNÉ", "SIGNE"]
+    )
 
     duree = time.time() - t0
-    resultat["details"] = f"Analyse locale (Moondream2), {duree:.1f}s — " + ", ".join(details)
+    resultat["details"] = f"Analyse locale (transcription), {duree:.1f}s — {texte_complet[:400]}"
     logger.info(f"Résultat analyse visuelle (local) : {resultat}")
     return resultat
 
 
-def _poser_question_locale(url: str, img_b64: str, question: str) -> tuple:
-    """Pose une question OUI/NON simple. Retourne (bool_reponse, erreur_ou_None)."""
-    prompt = PREFIXE_LOCAL + question + "\nRéponds uniquement par OUI ou NON.\nRéponse:"
+def _transcrire_page_locale(url: str, img_b64: str) -> tuple:
+    prompt = PREFIXE_LOCAL + PROMPT_TRANSCRIPTION + "\nDescription:"
     payload = {
         "prompt": prompt,
         "multimodal_data": [img_b64],
-        "n_predict": 6,
+        "n_predict": 250,
         "temperature": 0.0,
         "cache_prompt": True,
     }
     try:
-        with httpx.Client(timeout=120.0) as client:
+        with httpx.Client(timeout=180.0) as client:
             response = client.post(url, json=payload)
             response.raise_for_status()
             result = response.json()
-            texte = result.get("content", "").strip().upper()
-            cache_n = result.get("tokens_cached", "?")
-            logger.info(f"  Q: {question[:40]}... -> '{texte}' (cache={cache_n})")
-            return ("OUI" in texte or "YES" in texte), None
+            texte = result.get("content", "").strip()
+            logger.info(f"  Transcription brute : {texte[:300]}")
+            return texte, None
     except httpx.HTTPStatusError as e:
         logger.error(f"Erreur HTTP llama-server : {e.response.status_code} — {e.response.text}")
-        return False, f"{e.response.status_code}: {e.response.text[:200]}"
+        return "", f"{e.response.status_code}: {e.response.text[:200]}"
     except httpx.ConnectError as e:
         logger.error(f"Serveur de vision local injoignable : {e}")
-        return False, "Serveur de vision local injoignable — vérifie que llama-server tourne."
+        return "", "Serveur de vision local injoignable — vérifie que llama-server tourne."
     except Exception as e:
         logger.error(f"Erreur vision locale : {e}")
-        return False, str(e)
+        return "", str(e)
 
 
 # ═══════════════════════════════════════════════════════════
