@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_vision_model: str = os.getenv("GEMINI_VISION_MODEL", "gemini-3.6-flash")
 
+    # Backend vision : "gemini" (externe, rapide) ou "local" (Moondream2, open source)
+    vision_backend: str = os.getenv("VISION_BACKEND", "gemini")
+
     # Modèle de vision local (Moondream2 via llama-server) — 100% open source
     local_vlm_url: str = os.getenv("LOCAL_VLM_URL", "http://127.0.0.1:8081/v1/chat/completions")
 
