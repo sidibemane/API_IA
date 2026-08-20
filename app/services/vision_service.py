@@ -82,9 +82,15 @@ PROMPT_TRANSCRIPTION = (
     "image : le numéro en haut de page (recopie-le exactement, ou dis "
     "'aucun numéro' si tu vois seulement des points de suspension), chaque "
     "tampon ou étiquette (même en pointillés — recopie les lettres que tu "
-    "distingues), et s'il y a une signature manuscrite ou un cachet en bas "
-    "de page. Sois exhaustif : ne laisse rien de côté, même les éléments "
-    "peu visibles ou partiels."
+    "distingues).\n"
+    "Attention : le texte imprimé standard mentionne toujours 'LE MINISTRE "
+    "DE LA FONCTION PUBLIQUE...' — ce n'est PAS une signature, ignore ce "
+    "texte pour cette question. Regarde uniquement tout en bas de la page : "
+    "y a-t-il une marque manuscrite (écriture à la main, pas du texte "
+    "imprimé) ou un cachet/tampon rond ? Si oui, écris explicitement "
+    "'SIGNATURE MANUSCRITE PRESENTE' ou 'CACHET ROND PRESENT'. Si le bas de "
+    "la page est vide ou ne contient que du texte imprimé, écris "
+    "'RIEN EN BAS DE PAGE'."
 )
 
 
@@ -126,7 +132,7 @@ def _analyser_via_local(pdf_bytes: bytes, settings) -> dict:
     resultat["tampon_DP"] = contient_approximativement("DP") and not resultat["tampon_DPB"]
     resultat["numero_acte_haut"] = bool(re.search(r"\bN[°o]?\s*\d{2,}", texte_complet))
     resultat["signature_cachet_ministre_bas"] = any(
-        m in texte_complet for m in ["SIGNATURE", "CACHET", "MINISTRE", "SIGNÉ", "SIGNE"]
+        m in texte_complet for m in ["SIGNATURE MANUSCRITE", "CACHET ROND", "CACHET OFFICIEL", "PARAPHE", "SIGNÉ", "SIGNE PAR"]
     )
 
     duree = time.time() - t0
@@ -140,8 +146,10 @@ def _transcrire_page_locale(url: str, img_b64: str) -> tuple:
     payload = {
         "prompt": prompt,
         "multimodal_data": [img_b64],
-        "n_predict": 250,
-        "temperature": 0.0,
+        "n_predict": 200,
+        "temperature": 0.2,
+        "repeat_penalty": 1.3,
+        "repeat_last_n": 64,
         "cache_prompt": True,
     }
     try:
