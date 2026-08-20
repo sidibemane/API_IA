@@ -15,8 +15,10 @@ faiss-cpu>=1.9.0
 transformers>=4.47.0
 accelerate>=1.2.0
 
-# Vision (désactivée en CPU)
-Pillow>=11.0.0
+# Vision locale (Qwen2.5-VL via transformers)
+torch>=2.5.0
+torchvision>=0.20.0
+qwen-vl-utils>=0.0.8
 
 # PDF/DOCX
 pymupdf>=1.25.0
