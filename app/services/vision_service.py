@@ -131,7 +131,7 @@ def _charger_modele_transformers():
 
     _modele_transformers = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         "Qwen/Qwen2.5-VL-7B-Instruct",
-        torch_dtype=torch.float16,
+        torch_dtype=torch.bfloat16,
         device_map="cpu",
         low_cpu_mem_usage=True,
     )
@@ -151,7 +151,7 @@ def _analyser_via_transformers(pdf_bytes: bytes) -> dict:
         return {**REPONSE_PAR_DEFAUT, "erreur": f"Erreur chargement modèle : {e}"}
 
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    pix = doc[0].get_pixmap(dpi=150)
+    pix = doc[0].get_pixmap(dpi=100)
     chemin_image = "/tmp/_vision_page_tmp.png"
     pix.save(chemin_image)
     doc.close()
@@ -170,7 +170,7 @@ def _analyser_via_transformers(pdf_bytes: bytes) -> dict:
         image_inputs, video_inputs = process_vision_info(messages)
         inputs = processor(text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt")
 
-        generated_ids = model.generate(**inputs, max_new_tokens=250, do_sample=False)
+        generated_ids = model.generate(**inputs, max_new_tokens=150, do_sample=False)
         generated_ids_trimmed = [out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)]
         output_text = processor.batch_decode(generated_ids_trimmed, skip_special_tokens=True)
         texte = output_text[0].strip()
