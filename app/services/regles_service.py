@@ -62,7 +62,7 @@ def extraire_infos_acte(acte: str) -> dict:
 
     # 2) SIGNATAIRE
     match_sign = re.search(
-        r'(LE MINISTRE. ?SERVICE PUBLIC[,\.]?)', acte, re.IGNORECASE | re.DOTALL
+        r'(LE MINISTRE.*?SERVICE PUBLIC[,\.]?)', acte, re.IGNORECASE | re.DOTALL
     )
     if match_sign:
         infos["signataire"] = " ".join(match_sign.group(1).split()).rstrip(",.")
@@ -173,12 +173,13 @@ def verifier_points_abc(acte_text: str) -> dict:
     e = infos["entete_lignes"]
     entete_joined = " ".join(x.upper() for x in e)
     has_dashes = "UN PEUPLE – UN BUT – UNE FOI" in entete_joined or "UN PEUPLE - UN BUT - UNE FOI" in entete_joined
+    has_devise = "UN PEUPLE" in entete_joined and "UN BUT" in entete_joined and "UNE FOI" in entete_joined
     ok_A = (
         len(e) >= 3
         and "REPUBLIQUE DU SENEGAL" in entete_joined
         and "FONCTION PUBLIQUE" in entete_joined
         and "TRAVAIL" in entete_joined
-        and has_dashes
+        and has_devise
     )
 
     # Point B — Type d'acte
