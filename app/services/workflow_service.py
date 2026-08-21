@@ -1,5 +1,6 @@
 """Service Workflow : MoteurValidationGIRAFE complet."""
 
+import hashlib
 import logging
 from datetime import datetime
 from typing import Optional
@@ -83,9 +84,10 @@ CODES_BLOQUANTS = {
     "DELAI_NON_CONFORME", "MATRICULE_NON_TROUVE_DANS_ACTE", "AGENT_INCONNU_BASE",
     "IDENTITE_NOM_INCORRECT", "IDENTITE_PRENOM_INCORRECT",
     "IDENTITE_DATE_NAISSANCE_INCORRECTE", "DELAI_AVANCEMENT_INCORRECT",
+    "SIGNATAIRE_INCORRECT",
 }
 CODES_IMPORTANTS = {
-    "SIGNATAIRE_INCORRECT", "DATES_MANQUANTES", "LLM_INCOHERENCE_OBJET",
+    "DATES_MANQUANTES", "LLM_INCOHERENCE_OBJET",
     "LLM_CONTRADICTION_INTERNE", "DELAI_NON_VERIFIABLE", "DELAI_AVANCEMENT_A_VERIFIER",
 }
 CODES_INFORMATIFS = {"TEXTE_EXTRACTION_PARTIELLE", "LLM_VISAS_A_VERIFIER"}
@@ -113,6 +115,38 @@ class MoteurValidationGIRAFE:
         self.checks_textuels: dict = {}
         self.etapes_textuelles_faites: set = set()
         self.historique: list = []
+        # Cache par empreinte de contenu — évite de re-solliciter Gemini/HF
+        # pour un fichier ou un texte déjà analysé, MAIS relance
+        # automatiquement l'analyse dès que le contenu change réellement
+        # (ex: un tampon vient d'être ajouté entre deux étapes).
+        self.cache_vision: dict = {}
+        self.cache_semantique: dict = {}
+
+    def _analyser_visuel_avec_cache(self, pdf_bytes: bytes) -> dict:
+        """Réutilise le résultat déjà obtenu si CE fichier exact a déjà été
+        analysé. Dès que le contenu du PDF change (ex: un tampon vient
+        d'être ajouté), l'empreinte change aussi → nouvelle analyse
+        automatique, jamais de résultat périmé."""
+        empreinte = hashlib.sha256(pdf_bytes).hexdigest()
+        if empreinte in self.cache_vision:
+            logger.info(f"♻️  Vision réutilisée depuis le cache (empreinte {empreinte[:8]}...)")
+            return self.cache_vision[empreinte]
+
+        resultat = analyser_visuel_acte(pdf_bytes)
+        self.cache_vision[empreinte] = resultat
+        return resultat
+
+    def _verification_semantique_avec_cache(self, acte_text: str) -> dict:
+        """Même principe pour la vérification sémantique (LLM) : réutilise
+        le résultat si CE texte exact a déjà été analysé."""
+        empreinte = hashlib.sha256(acte_text.encode("utf-8")).hexdigest()
+        if empreinte in self.cache_semantique:
+            logger.info(f"♻️  Analyse sémantique réutilisée depuis le cache (empreinte {empreinte[:8]}...)")
+            return self.cache_semantique[empreinte]
+
+        resultat = verification_semantique(acte_text)
+        self.cache_semantique[empreinte] = resultat
+        return resultat
 
     def initialiser_workflow(self, acte_text: str) -> dict:
         type_str = detecter_type_acte(acte_text)
@@ -188,7 +222,7 @@ class MoteurValidationGIRAFE:
 
             # Vérification sémantique LLM
             try:
-                sem = verification_semantique(acte_text)
+                sem = self._verification_semantique_avec_cache(acte_text)
                 if sem.get("coherence_objet", "").upper().startswith("NON"):
                     code = "LLM_INCOHERENCE_OBJET"
                     anomalies.append({
@@ -241,7 +275,7 @@ class MoteurValidationGIRAFE:
 
         if (tampons_requis or signature_requise or numero_requis) and pdf_bytes:
             try:
-                res_visuel = analyser_visuel_acte(pdf_bytes)
+                res_visuel = self._analyser_visuel_avec_cache(pdf_bytes)
                 if res_visuel.get("tampon_DGFP"): tampons_detectes.append("DGFP")
                 if res_visuel.get("tampon_DIRSOLDE"): tampons_detectes.append("DS")
                 if res_visuel.get("tampon_DPB"): tampons_detectes.append("DPB")
@@ -288,11 +322,26 @@ class MoteurValidationGIRAFE:
         ]
         statut = StatutEtape.REJETE.value if anomalies_bloquantes else StatutEtape.VALIDE.value
 
+        if anomalies_bloquantes:
+            liste_motifs = "; ".join(f"{a['code']} — {a['description']}" for a in anomalies_bloquantes)
+            liste_recommandations = [
+                a["recommandation"] for a in anomalies_bloquantes if a.get("recommandation")
+            ]
+            message_verdict = (
+                f"❌ Cet acte NE PEUT PAS être validé par le profil « {profil} » "
+                f"en raison de {len(anomalies_bloquantes)} anomalie(s) bloquante(s) : {liste_motifs}."
+            )
+        else:
+            liste_recommandations = []
+            message_verdict = f"✅ Cet acte est validé par le profil « {profil} », aucune anomalie bloquante."
+
         resultat = {
             "acte_id": acte_id,
             "etape": etape,
             "profil": profil,
             "statut": statut,
+            "message_verdict": message_verdict,
+            "recommandations": liste_recommandations,
             "anomalies": anomalies,
             "checks": checks,
             "tampons_detectes": tampons_detectes,
@@ -310,7 +359,7 @@ class MoteurValidationGIRAFE:
 
         nb_etapes = len(self.workflow_actuel)
         try:
-            res_visuel = analyser_visuel_acte(pdf_bytes)
+            res_visuel = self._analyser_visuel_avec_cache(pdf_bytes)
             tampons_finaux = []
             if res_visuel.get("tampon_DGFP"): tampons_finaux.append("DGFP")
             if res_visuel.get("tampon_DIRSOLDE"): tampons_finaux.append("DS")
