@@ -193,6 +193,12 @@ def verifier_points_abc(acte_text: str) -> dict:
     sign_a_norm = " ".join(SIGNATAIRE_OFFICIEL.upper().split()).rstrip(",.")
     ok_C = sign_c_norm == sign_a_norm
 
+    logger.info(
+        f"DIAGNOSTIC point_A/C — entete_joined={entete_joined!r} | has_dashes={has_dashes} "
+        f"| ok_A={ok_A} | sign_constate={sign_constate!r} | sign_c_norm={sign_c_norm!r} "
+        f"| sign_a_norm={sign_a_norm!r} | ok_C={ok_C}"
+    )
+
     return {
         "point_A": {"conforme": ok_A, "constate": entete_joined[:200]},
         "point_B": {"conforme": ok_B, "constate": type_constate, "attendu": type_attendu, "statut": statut},
