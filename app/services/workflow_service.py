@@ -409,15 +409,48 @@ class MoteurValidationGIRAFE:
         }
 
 
-# Instance globale
-_moteur_global = MoteurValidationGIRAFE()
+# ═══════════════════════════════════════════════════════════
+#  GESTION MULTI-ACTES — un moteur isolé par acte_id, pour
+#  permettre le traitement de plusieurs actes en parallèle
+#  (indispensable pour un usage GIRAFE multi-agents).
+# ═══════════════════════════════════════════════════════════
+
+import time as _time
+
+_DUREE_EXPIRATION_SECONDES = 2 * 60 * 60  # purge après 2h d'inactivité
+
+# acte_id -> [MoteurValidationGIRAFE, timestamp_derniere_activite]
+_moteurs_par_acte: dict = {}
 
 
-def get_moteur() -> MoteurValidationGIRAFE:
-    return _moteur_global
+def _purger_moteurs_expires():
+    """Libère la mémoire des actes inactifs depuis trop longtemps —
+    évite une fuite mémoire si /workflow/reset n'est jamais appelé."""
+    maintenant = _time.time()
+    expires = [
+        aid for aid, (_, derniere_activite) in _moteurs_par_acte.items()
+        if maintenant - derniere_activite > _DUREE_EXPIRATION_SECONDES
+    ]
+    for aid in expires:
+        del _moteurs_par_acte[aid]
+    if expires:
+        logger.info(f"🧹 {len(expires)} acte(s) expiré(s) purgé(s) du cache (inactifs >2h)")
 
 
-def reset_moteur():
-    global _moteur_global
-    _moteur_global = MoteurValidationGIRAFE()
-    return _moteur_global
+def get_moteur(acte_id: str) -> MoteurValidationGIRAFE:
+    """Retourne le moteur isolé de CET acte précis. Deux actes différents
+    (acte_id différents) ne partagent jamais leur état — ils peuvent être
+    traités en parallèle sans risque de mélange."""
+    _purger_moteurs_expires()
+    if acte_id not in _moteurs_par_acte:
+        _moteurs_par_acte[acte_id] = [MoteurValidationGIRAFE(), _time.time()]
+    else:
+        _moteurs_par_acte[acte_id][1] = _time.time()
+    return _moteurs_par_acte[acte_id][0]
+
+
+def reset_moteur(acte_id: str) -> MoteurValidationGIRAFE:
+    """Réinitialise UNIQUEMENT le moteur de cet acte précis — n'affecte
+    aucun autre acte en cours de traitement."""
+    _moteurs_par_acte[acte_id] = [MoteurValidationGIRAFE(), _time.time()]
+    return _moteurs_par_acte[acte_id][0]

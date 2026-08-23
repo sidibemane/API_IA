@@ -63,9 +63,9 @@ def poser_question_rag(req: RAGQuestionRequest):
 
 
 @app.post("/workflow/init")
-def initialiser_workflow_api(acte_text: str = Form(...)):
+def initialiser_workflow_api(acte_id: str = Form(...), acte_text: str = Form(...)):
     from app.services.workflow_service import get_moteur
-    moteur = get_moteur()
+    moteur = get_moteur(acte_id)
     return moteur.initialiser_workflow(acte_text)
 
 
@@ -90,7 +90,7 @@ async def valider_etape_api(
     from app.services.workflow_service import get_moteur
     from app.services.extraction_service import extraire_texte_fichier
 
-    moteur = get_moteur()
+    moteur = get_moteur(acte_id)
 
     # Fichier accepté : PDF ou Word (.docx/.doc). La vision (tampons/
     # signature) n'est possible que sur un PDF — un Word n'a pas de rendu
@@ -141,7 +141,7 @@ async def cloture_workflow_api(
     fichier: UploadFile = File(...),
 ):
     from app.services.workflow_service import get_moteur
-    moteur = get_moteur()
+    moteur = get_moteur(acte_id)
     pdf_bytes = await fichier.read()
     try:
         return moteur.verification_finale(pdf_bytes, acte_id)
@@ -150,10 +150,10 @@ async def cloture_workflow_api(
 
 
 @app.post("/workflow/reset")
-def reset_workflow():
+def reset_workflow(acte_id: str = Form(...)):
     from app.services.workflow_service import reset_moteur
-    reset_moteur()
-    return {"message": "Workflow réinitialisé"}
+    reset_moteur(acte_id)
+    return {"message": f"Workflow réinitialisé pour l'acte {acte_id}"}
 
 
 @app.post("/vision/analyser")
