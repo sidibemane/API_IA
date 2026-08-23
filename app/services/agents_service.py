@@ -1,33 +1,21 @@
-"""
-Service Agents — vérification d'identité (matricule/nom/prénom/date de
-naissance) contre la base du personnel, et vérification des délais
-réglementaires d'avancement grade/échelon via les tables de référence
-(corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
- 
-Ce module était vide dans l'API déployée : toute cette logique existait
-dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
-ce qui explique l'absence de vérification matricule/nom/prénom et de
-calcul de délai d'avancement dans les résultats de l'API.
-"""
- 
 import json
 import logging
 import os
 import re
 import unicodedata
- 
+
 import pandas as pd
- 
+
 from app.config import get_settings
 from app.services.regles_service import calcul_delai_annees, get_delai_reglementaire
- 
+
 logger = logging.getLogger(__name__)
- 
- 
+
+
 # ═══════════════════════════════════════════════════════════
 #  1. BASE DES AGENTS
 # ═══════════════════════════════════════════════════════════
- 
+
 def _normaliser_texte_identite(texte) -> str:
     """Normalise pour comparaison : majuscules, sans accents, espaces uniques."""
     if not texte:
@@ -35,8 +23,8 @@ def _normaliser_texte_identite(texte) -> str:
     t = str(texte).upper().strip()
     t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode("ascii")
     return " ".join(t.split())
- 
- 
+
+
 def _normaliser_date(date_str) -> str:
     """Normalise une date en JJ/MM/AAAA, quel que soit le séparateur d'origine."""
     if not date_str:
@@ -48,12 +36,12 @@ def _normaliser_date(date_str) -> str:
     if len(a) == 2:
         a = ("19" + a) if int(a) > 30 else ("20" + a)
     return f"{int(j):02d}/{int(m):02d}/{a}"
- 
- 
+
+
 def _construire_index_matricule(base_agents: list) -> dict:
     return {_normaliser_texte_identite(a.get("matricule")): a for a in base_agents if a.get("matricule")}
- 
- 
+
+
 def _charger_base_agents() -> list:
     settings = get_settings()
     chemin = os.path.join(settings.data_dir, "base_agents.json")
@@ -71,24 +59,24 @@ def _charger_base_agents() -> list:
     except json.JSONDecodeError as e:
         logger.error(f"⚠️ {chemin} contient du JSON invalide : {e} — vérification identité désactivée.")
         return []
- 
- 
+
+
 BASE_AGENTS = _charger_base_agents()
 INDEX_AGENTS_PAR_MATRICULE = _construire_index_matricule(BASE_AGENTS)
- 
- 
+
+
 def recharger_base_agents():
     """Permet de recharger la base sans redémarrer l'API (ex: après mise à jour du fichier)."""
     global BASE_AGENTS, INDEX_AGENTS_PAR_MATRICULE
     BASE_AGENTS = _charger_base_agents()
     INDEX_AGENTS_PAR_MATRICULE = _construire_index_matricule(BASE_AGENTS)
     return len(BASE_AGENTS)
- 
- 
+
+
 # ═══════════════════════════════════════════════════════════
 #  2. EXTRACTION DE L'IDENTITÉ DEPUIS LE TEXTE DE L'ACTE
 # ═══════════════════════════════════════════════════════════
- 
+
 _RE_MATRICULE = re.compile(r"\b(\d{6}[A-Z])\b")
 _RE_NOM_NARRATIF = re.compile(
     r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*,?\s*$"
@@ -100,8 +88,8 @@ _RE_DATE_NAISSANCE = re.compile(
     r"n[ée]\(?e?\)?\s+le\s+(\d{1,2}\s*[/\-.]\s*\d{1,2}\s*[/\-.]\s*\d{2,4})", re.IGNORECASE
 )
 _RE_PREFIXE_MATRICULE = re.compile(r"matricule\s*(?:de\s*solde)?\s*n?°?\s*:?\s*$", re.IGNORECASE)
- 
- 
+
+
 def extraire_identite_agent(acte_text: str) -> list:
     """Repère chaque matricule (6 chiffres + 1 lettre) dans l'acte et tente
     d'identifier le nom/prénom juste avant, ainsi que la date de naissance
@@ -112,49 +100,65 @@ def extraire_identite_agent(acte_text: str) -> list:
         matricule = m.group(1)
         fenetre_avant = acte_text[max(0, m.start() - 220):m.start()]
         fenetre_avant = _RE_PREFIXE_MATRICULE.sub("", fenetre_avant)
- 
+
         nom, prenom = None, None
         m_nom = _RE_NOM_NARRATIF.search(fenetre_avant) or _RE_NOM_TABLEAU.search(fenetre_avant)
         if m_nom:
             prenom = " ".join(m_nom.group(1).split())
             nom = m_nom.group(2).strip()
- 
+
         date_naissance = None
         fenetre_large = acte_text[max(0, m.start() - 300):m.start() + 300]
         m_date = _RE_DATE_NAISSANCE.search(fenetre_large)
         if m_date:
             date_naissance = m_date.group(1).strip()
- 
+
         fin_bloc = matches[i + 1].start() if i + 1 < len(matches) else min(len(acte_text), m.end() + 600)
         bloc_progression = acte_text[m.end():fin_bloc]
- 
+
         agents.append({
             "matricule": matricule, "nom": nom, "prenom": prenom, "date_naissance": date_naissance,
             "bloc_progression": bloc_progression,
         })
     return agents
- 
- 
+
+
 # ═══════════════════════════════════════════════════════════
 #  3. VÉRIFICATION IDENTITÉ ACTE <-> BASE AGENTS
 # ═══════════════════════════════════════════════════════════
- 
-def verifier_identite_agent(acte_text: str, etape: int, profil: str):
-    """Extrait le/les agent(s) de l'acte, les recherche dans la base par
-    matricule, puis compare nom / prénom / date de naissance.
+
+def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_externes: list = None):
+    """Extrait le/les agent(s) de l'acte, les recherche par matricule, puis
+    compare nom / prénom / date de naissance.
+
+    agents_externes : si fourni (liste de dicts au format de base_agents.json,
+    envoyée par GIRAFE à chaque appel), c'est CETTE liste qui sert de source
+    de vérité — pas le fichier local base_agents.json. Le fichier local ne
+    sert que de repli pour les tests autonomes (dashboard), quand aucune
+    donnée n'est fournie par l'appelant.
+
     Retourne (anomalies: list[dict], checks: dict) — même format que
     verifier_points_abc, pour fusion directe dans workflow_service."""
     from app.services.workflow_service import determiner_criticite  # import différé (anti-cycle)
- 
+
     anomalies = []
     checks = {}
- 
-    if not BASE_AGENTS:
-        checks["Identification agent(s)"] = "ℹ Base des agents non configurée (base_agents.json vide)"
+
+    if agents_externes:
+        base_a_utiliser = agents_externes
+        index_a_utiliser = _construire_index_matricule(agents_externes)
+        source = "fournie par l'appelant"
+    else:
+        base_a_utiliser = BASE_AGENTS
+        index_a_utiliser = INDEX_AGENTS_PAR_MATRICULE
+        source = "locale (base_agents.json)"
+
+    if not base_a_utiliser:
+        checks["Identification agent(s)"] = f"ℹ Aucune base d'agents disponible ({source} vide)"
         return anomalies, checks
- 
+
     agents_acte = extraire_identite_agent(acte_text)
- 
+
     if not agents_acte:
         code = "MATRICULE_NON_TROUVE_DANS_ACTE"
         checks["Identification agent(s)"] = "❌ AUCUN MATRICULE TROUVÉ DANS L'ACTE"
@@ -166,14 +170,14 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str):
             "recommandation": "Vérifier que le(s) matricule(s) de(s) agent(s) figure(nt) bien et lisiblement dans l'acte.",
         })
         return anomalies, checks
- 
+
     plusieurs = len(agents_acte) > 1
- 
+
     for idx, identite_acte in enumerate(agents_acte, start=1):
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
         cle = _normaliser_texte_identite(identite_acte["matricule"])
-        agent_ref = INDEX_AGENTS_PAR_MATRICULE.get(cle)
- 
+        agent_ref = index_a_utiliser.get(cle)
+
         if agent_ref is None:
             code = "AGENT_INCONNU_BASE"
             checks[f"{prefixe} — Identification"] = f"❌ MATRICULE INCONNU DANS LA BASE ({identite_acte['matricule']})"
@@ -185,10 +189,10 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str):
                 "recommandation": "Vérifier le matricule (erreur de saisie possible) ou signaler un agent non répertorié.",
             })
             continue
- 
+
         checks[f"{prefixe} — Identification"] = f"✅ TROUVÉ — {agent_ref['nom']} {agent_ref['prenom']} (matricule {agent_ref['matricule']})"
         checks[f"{prefixe} — Matricule (acte vs base)"] = f"✅ CONFORME — '{identite_acte['matricule']}' trouvé dans la base des agents"
- 
+
         if identite_acte["nom"] and _normaliser_texte_identite(identite_acte["nom"]) != _normaliser_texte_identite(agent_ref.get("nom")):
             code = "IDENTITE_NOM_INCORRECT"
             checks[f"{prefixe} — Nom (acte vs base)"] = f"❌ Acte: '{identite_acte['nom']}' / Base: '{agent_ref.get('nom')}'"
@@ -201,7 +205,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str):
             })
         elif identite_acte["nom"]:
             checks[f"{prefixe} — Nom (acte vs base)"] = "✅ CONFORME"
- 
+
         if identite_acte["prenom"] and _normaliser_texte_identite(identite_acte["prenom"]) != _normaliser_texte_identite(agent_ref.get("prenom")):
             code = "IDENTITE_PRENOM_INCORRECT"
             checks[f"{prefixe} — Prénom (acte vs base)"] = f"❌ Acte: '{identite_acte['prenom']}' / Base: '{agent_ref.get('prenom')}'"
@@ -214,7 +218,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str):
             })
         elif identite_acte["prenom"]:
             checks[f"{prefixe} — Prénom (acte vs base)"] = "✅ CONFORME"
- 
+
         if identite_acte["date_naissance"]:
             d_acte = _normaliser_date(identite_acte["date_naissance"])
             d_base = _normaliser_date(agent_ref.get("date_naissance"))
@@ -230,25 +234,25 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str):
                 })
             else:
                 checks[f"{prefixe} — Date de naissance (acte vs base)"] = "✅ CONFORME"
- 
+
         if agent_ref.get("corps"):
             checks[f"{prefixe} — Corps (base)"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'})"
- 
+
     return anomalies, checks
- 
- 
+
+
 # ═══════════════════════════════════════════════════════════
 #  4. TABLES DE RÉFÉRENCE CORPS / CLASSE / ÉCHELON (délai d'avancement)
 # ═══════════════════════════════════════════════════════════
- 
+
 def _normaliser_ref(t):
     if t is None or isinstance(t, float):
         return ""
     t = str(t).upper().strip()
     t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode("ascii")
     return " ".join(t.split())
- 
- 
+
+
 def _charger_tables_reference():
     settings = get_settings()
     d = settings.data_dir
@@ -265,10 +269,10 @@ def _charger_tables_reference():
     except FileNotFoundError as e:
         logger.warning(f"⚠️ Table de référence introuvable ({e}) — calcul de délai en mode repli uniquement.")
         return None, None, None, None
- 
- 
+
+
 CORPS_DF, CLASSE_DF, ECHELON_DF, CCE_DF = _charger_tables_reference()
- 
+
 CLS_LABEL_VERS_CODE = {
     "1CL": "1_SG", "2CL": "2_SG", "3CL": "3_SG", "4CL": "4_SG",
     "5CL": "5_SG", "6CL": "6_SG",
@@ -277,12 +281,12 @@ CLS_LABEL_VERS_CODE = {
 ECH_LABEL_VERS_CODE = {
     "1ECH": "1_SG", "2ECH": "2_SG", "3ECH": "3_SG", "4ECH": "4_SG",
 }
- 
+
 CPS_LIBELLE_VERS_CODES = {}
 _LIBELLES_TRIES = []
 CPS_INFOS_PAR_CODE = {}
 DUREE_LOOKUP = {}
- 
+
 if CORPS_DF is not None:
     for _, _row in CORPS_DF.iterrows():
         for _lib in (_row.get("cps_libelle"), _row.get("cps_libelle_singulier")):
@@ -292,27 +296,27 @@ if CORPS_DF is not None:
                 _LIBELLES_TRIES.append((_cle, _row["cps_code"], _row.get("cps_typecorps_code")))
     _LIBELLES_TRIES = sorted(set(_LIBELLES_TRIES), key=lambda x: -len(x[0]))
     CPS_INFOS_PAR_CODE = CORPS_DF.set_index("cps_code").to_dict(orient="index")
- 
+
 if CCE_DF is not None:
     for _, _row in CCE_DF.iterrows():
         _cle = (str(_row["cce_cps_code"]), str(_row["cce_cls_code"]), str(_row["cce_ech_code"]))
         DUREE_LOOKUP[_cle] = int(_row["cce_duree"])
- 
+
 _HIER_RE = re.compile(r'\b(AS|A1|A2|A3|B1|B2|B3|B4|C1|C2|C3|C4|D1|D2|D3|D4)\b')
- 
- 
+
+
 def _pretraiter_texte_corps(texte):
     texte = re.sub(r'\b([A-D])\s+(\d)\b', r'\1\2', texte)
     texte = re.sub(r'\bNF([A-D][1-4]|AS)\b', r'NF \1', texte)
     return texte
- 
- 
+
+
 def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
     if CORPS_DF is None:
         return None
     texte_norm = _normaliser_ref(_pretraiter_texte_corps(acte_text))
     candidats = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib in texte_norm]
- 
+
     if not candidats:
         hierarchies_trouvees = _HIER_RE.findall(texte_norm)
         mots = [m for m in texte_norm.split() if len(m) >= 5]
@@ -334,10 +338,10 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
             if trouve:
                 candidats = trouve
                 break
- 
+
     if not candidats:
         return None
- 
+
     max_len = max(len(c[0]) for c in candidats)
     meilleurs = [c for c in candidats if len(c[0]) == max_len]
     if len(meilleurs) == 1:
@@ -347,32 +351,32 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
         if typ == type_attendu:
             return code
     return meilleurs[0][1]
- 
- 
+
+
 def parser_grade_depart(grade_label: str):
     label = " ".join(str(grade_label).upper().split())
- 
+
     if label.startswith("PPL") and "CEX" not in label:
         cls_code = CLS_LABEL_VERS_CODE.get("PPL")
         m = re.search(r"(\d+ECH)", label)
         ech_code = ECH_LABEL_VERS_CODE.get(m.group(1)) if m else None
         return (cls_code, ech_code) if ech_code else None
- 
+
     m = re.match(r"(\d+CL)\s+(\d+ECH)", label)
     if m:
         cls_code = CLS_LABEL_VERS_CODE.get(m.group(1))
         ech_code = ECH_LABEL_VERS_CODE.get(m.group(2))
         return (cls_code, ech_code) if (cls_code and ech_code) else None
- 
+
     return None
- 
- 
+
+
 def get_delai_reglementaire_v2(acte_text: str, statut: str, corps_texte_extrait: str, grade_depart_label: str):
     """Priorité à la table corps_classe_echelon.csv (source de vérité).
     Repli sur get_delai_reglementaire() (règles générales) si le corps
     n'y figure pas — dans ce cas confirme_par_table=False."""
     cps_code = detecter_corps_depuis_texte(acte_text, statut) or detecter_corps_depuis_texte(corps_texte_extrait or "", statut)
- 
+
     if cps_code is not None:
         parse = parser_grade_depart(grade_depart_label)
         if parse is not None:
@@ -381,7 +385,7 @@ def get_delai_reglementaire_v2(acte_text: str, statut: str, corps_texte_extrait:
             if duree is not None:
                 libelle_corps = CPS_INFOS_PAR_CODE.get(cps_code, {}).get("cps_libelle", cps_code)
                 return duree, f"Table corps_classe_echelon (corps {cps_code} — {libelle_corps})", True
- 
+
     hierarchie = ""
     m = _HIER_RE.search(_normaliser_ref(acte_text))
     if m:
@@ -393,42 +397,42 @@ def get_delai_reglementaire_v2(acte_text: str, statut: str, corps_texte_extrait:
             break
     duree, regle = get_delai_reglementaire(statut, hierarchie, classe_depart, corps_texte_extrait or "")
     return duree, f"{regle} (repli — corps non trouvé dans corps_classe_echelon.csv, non confirmé par la table)", False
- 
- 
+
+
 # ═══════════════════════════════════════════════════════════
 #  5. VÉRIFICATION DES DÉLAIS D'AVANCEMENT
 # ═══════════════════════════════════════════════════════════
- 
+
 _RE_GRADE_PROGRESSION = re.compile(r"(?:\d+CL|PPL|HC)\s+\d+ECH|CEX", re.IGNORECASE)
 _RE_DATE_PROGRESSION = re.compile(r"\d{2}[./]\d{2}[./]\d{4}")
- 
- 
+
+
 def extraire_progression_grade(bloc_texte: str):
     grades = [g.upper().replace("  ", " ").strip() for g in _RE_GRADE_PROGRESSION.findall(bloc_texte)]
     dates = [d.replace(".", "/") for d in _RE_DATE_PROGRESSION.findall(bloc_texte)]
     if len(grades) != len(dates) or len(grades) < 2:
         return None
     return list(zip(grades, dates))
- 
- 
+
+
 def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, hierarchie: str, corps: str, etape: int, profil: str):
     """Pour chaque agent, vérifie chaque étape de sa progression grade/échelon
     par rapport au délai réglementaire (table corps_classe_echelon.csv en
     priorité, repli sur les règles générales sinon)."""
     from app.services.workflow_service import determiner_criticite  # import différé (anti-cycle)
- 
+
     anomalies = []
     checks = {}
- 
+
     if not agents_acte:
         return anomalies, checks
- 
+
     plusieurs = len(agents_acte) > 1
- 
+
     for idx, agent in enumerate(agents_acte, start=1):
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
         etapes = extraire_progression_grade(agent.get("bloc_progression", ""))
- 
+
         if not etapes:
             code = "DELAI_NON_VERIFIABLE"
             checks[f"{prefixe} — Délai avancement"] = "ℹ Tableau de progression non exploitable (à vérifier manuellement)"
@@ -440,20 +444,20 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
                 "recommandation": "Vérifier manuellement le calcul du délai d'avancement pour cet agent.",
             })
             continue
- 
+
         for i in range(1, len(etapes)):
             grade_avant = " ".join(etapes[i - 1][0].split())
             date_avant = etapes[i - 1][1]
             grade_apres = " ".join(etapes[i][0].split())
             date_apres = etapes[i][1]
- 
+
             delai_constate = calcul_delai_annees(date_avant, date_apres)
             delai_reg, regle_appliquee, confirme_par_table = get_delai_reglementaire_v2(
                 acte_text, statut, corps, grade_avant
             )
- 
+
             libelle_etape = f"{prefixe} — {grade_avant} → {grade_apres}"
- 
+
             if delai_reg is None:
                 checks[libelle_etape] = "ℹ Délai réglementaire indéterminé (corps/grade non reconnu) — à vérifier manuellement"
                 code = "DELAI_NON_VERIFIABLE"
@@ -465,7 +469,7 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
                     "recommandation": "Vérifier manuellement dans corps_classe_echelon.csv ou regles_metier_actes_RH.",
                 })
                 continue
- 
+
             if delai_constate == delai_reg:
                 checks[libelle_etape] = f"✅ CONFORME ({delai_constate} an(s), {regle_appliquee})"
             else:
@@ -484,5 +488,5 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
                     "profil_concerne": profil, "etape": etape,
                     "recommandation": "Corriger la date d'effet ou vérifier le grade/l'échelon inscrits dans le tableau.",
                 })
- 
+
     return anomalies, checks

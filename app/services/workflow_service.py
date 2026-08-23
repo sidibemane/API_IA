@@ -163,7 +163,7 @@ class MoteurValidationGIRAFE:
 
     def valider_etape(
         self, acte_text: str, pdf_bytes: Optional[bytes],
-        etape: int, acte_id: str,
+        etape: int, acte_id: str, agents_externes: Optional[list] = None,
     ) -> dict:
         if self.workflow_actuel is None:
             self.initialiser_workflow(acte_text)
@@ -238,7 +238,7 @@ class MoteurValidationGIRAFE:
             # Identité agent (matricule / nom / prénom / date de naissance vs base des agents)
             try:
                 from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, verifier_delais_avancement
-                anomalies_id, checks_id = verifier_identite_agent(acte_text, etape, profil)
+                anomalies_id, checks_id = verifier_identite_agent(acte_text, etape, profil, agents_externes)
                 anomalies.extend(anomalies_id)
                 checks.update(checks_id)
 

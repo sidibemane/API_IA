@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(" Démarrage API RAG RH (mode CPU)...")
+    logger.info("🚀 Démarrage API RAG RH (mode CPU)...")
 
     from app.services.rag_service import initialiser_rag
     initialiser_rag()
@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(get_settings().logs_dir, exist_ok=True)
 
     mode = get_settings().llm_mode
-    logger.info(f" API prête ! Mode LLM : {mode}")
+    logger.info(f"✅ API prête ! Mode LLM : {mode}")
     yield
 
 
@@ -75,11 +75,27 @@ async def valider_etape_api(
     acte_id: str = Form(...),
     acte_text: str = Form(None),
     fichier: UploadFile = File(None),
+    agent_info: str = Form(
+        None,
+        description=(
+            "JSON (fourni par GIRAFE) décrivant le/les agent(s) concerné(s) "
+            "par cet acte — objet unique ou liste d'objets, avec les champs : "
+            "matricule, nom, prenom, date_naissance, corps, grade, hierarchie. "
+            "Si absent, l'API se rabat sur sa base de test locale (usage "
+            "développement uniquement)."
+        ),
+    ),
 ):
+    import json as _json
     from app.services.workflow_service import get_moteur
     from app.services.extraction_service import extraire_texte_fichier
 
     moteur = get_moteur()
+
+    # Fichier accepté : PDF ou Word (.docx/.doc). La vision (tampons/
+    # signature) n'est possible que sur un PDF — un Word n'a pas de rendu
+    # visuel exploitable.
+    est_pdf = bool(fichier and fichier.filename and fichier.filename.lower().endswith(".pdf"))
 
     if moteur.workflow_actuel is None:
         if acte_text:
@@ -91,15 +107,28 @@ async def valider_etape_api(
         else:
             raise HTTPException(400, "Fournissez acte_text ou fichier")
 
-    pdf_bytes = None
+    fichier_bytes = None
     if fichier:
-        pdf_bytes = await fichier.read()
+        fichier_bytes = await fichier.read()
 
-    if not acte_text and pdf_bytes:
-        acte_text = extraire_texte_fichier(pdf_bytes, fichier.filename or "acte.pdf")
+    if not acte_text and fichier_bytes:
+        acte_text = extraire_texte_fichier(fichier_bytes, fichier.filename or "acte")
+
+    # La vision n'est transmise que si c'est vraiment un PDF, sinon le
+    # moteur ignorera simplement les vérifications visuelles pour cette
+    # étape (les vérifications textuelles/identité restent actives).
+    pdf_bytes = fichier_bytes if est_pdf else None
+
+    agents_externes = None
+    if agent_info:
+        try:
+            parsed = _json.loads(agent_info)
+            agents_externes = parsed if isinstance(parsed, list) else [parsed]
+        except _json.JSONDecodeError as e:
+            raise HTTPException(400, f"agent_info n'est pas un JSON valide : {e}")
 
     try:
-        return moteur.valider_etape(acte_text, pdf_bytes, etape, acte_id)
+        return moteur.valider_etape(acte_text, pdf_bytes, etape, acte_id, agents_externes)
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:
