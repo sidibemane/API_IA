@@ -1,4 +1,3 @@
-
 import difflib
 import json
 import logging
@@ -441,28 +440,41 @@ _RE_GRADE_PROGRESSION = re.compile(r"(?:\d+CL|PPL|HC)\s+\d+ECH|CEX", re.IGNORECA
 _RE_DATE_PROGRESSION = re.compile(r"\d{2}[./]\d{2}[./]\d{4}")
 
 
-def extraire_progression_grade(bloc_texte: str):
-    grades = [g.upper().replace("  ", " ").strip() for g in _RE_GRADE_PROGRESSION.findall(bloc_texte)]
-    dates = [d.replace(".", "/") for d in _RE_DATE_PROGRESSION.findall(bloc_texte)]
-    if len(grades) != len(dates) or len(grades) < 2:
+def _extraire_paires_brutes(texte: str):
+    """Extrait toutes les paires (grade, date) trouvées dans le texte
+    donné, dans leur ordre d'apparition physique — sans jugement sur leur
+    cohérence."""
+    grades = [g.upper().replace("  ", " ").strip() for g in _RE_GRADE_PROGRESSION.findall(texte)]
+    dates = [d.replace(".", "/") for d in _RE_DATE_PROGRESSION.findall(texte)]
+    if len(grades) != len(dates):
+        return []
+    return list(zip(grades, dates))
+
+
+def _tronquer_a_la_premiere_incoherence(paires: list):
+    """Garde-fou : dans une vraie progression de carrière, les dates
+    avancent TOUJOURS dans le temps. Une date qui recule ou n'avance pas
+    est le signe fiable d'une confusion d'extraction (mélange entre deux
+    agents) — on tronque la séquence à ce point-là plutôt que de produire
+    des comparaisons absurdes en aval."""
+    if not paires:
         return None
-
-    paires = list(zip(grades, dates))
-
-    # Garde-fou : dans une vraie progression de carrière, les dates
-    # avancent TOUJOURS dans le temps. Si l'extraction du tableau PDF a
-    # mélangé des lignes de deux agents différents (table multi-agents),
-    # une date qui recule ou qui n'avance pas est le signe fiable de cette
-    # confusion — on tronque la séquence à ce point-là plutôt que de
-    # continuer à produire des comparaisons absurdes en aval.
     paires_valides = [paires[0]]
     for grade, date in paires[1:]:
         derniere_date = paires_valides[-1][1]
         if calcul_delai_annees(derniere_date, date) <= 0:
             break
         paires_valides.append((grade, date))
-
     return paires_valides
+
+
+def extraire_progression_grade(bloc_texte: str):
+    """Conservé pour compatibilité — extraction + garde-fou sur UN bloc de
+    texte donné (utilisé pour les actes à un seul agent)."""
+    paires = _extraire_paires_brutes(bloc_texte)
+    if len(paires) < 2:
+        return None
+    return _tronquer_a_la_premiere_incoherence(paires)
 
 
 def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, hierarchie: str, corps: str, etape: int, profil: str):
@@ -479,9 +491,41 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
 
     plusieurs = len(agents_acte) > 1
 
-    for idx, agent in enumerate(agents_acte, start=1):
+    # Détermine, pour chaque agent, sa liste de paires (grade, date) —
+    # deux stratégies selon le cas :
+    #
+    # 1) Acte à PLUSIEURS agents : le nom/matricule d'un agent peut
+    #    apparaître APRÈS ses propres données de progression dans le texte
+    #    extrait du PDF (mise en page en tableau, cellule de nom sur deux
+    #    lignes qui décale l'ordre de lecture) — chercher "après le
+    #    matricule" échoue alors pour certains agents. On extrait donc
+    #    TOUTES les paires du document en une fois, dans leur ordre
+    #    d'apparition physique, et on les répartit équitablement entre les
+    #    agents dans l'ordre où ILS apparaissent (même hypothèse validée
+    #    sur un vrai cas : chaque agent = un nombre égal de paires).
+    #
+    # 2) Acte à UN SEUL agent : on garde l'extraction par bloc individuel,
+    #    qui gère bien le cas d'un seul agent avec plusieurs échelons
+    #    successifs (chaînage complet dans l'ordre).
+    groupes_par_agent = []
+    if plusieurs:
+        toutes_paires = _extraire_paires_brutes(acte_text)
+        if toutes_paires and len(toutes_paires) % len(agents_acte) == 0:
+            par_agent = len(toutes_paires) // len(agents_acte)
+            for i in range(len(agents_acte)):
+                sous_groupe = toutes_paires[i * par_agent:(i + 1) * par_agent]
+                groupes_par_agent.append(_tronquer_a_la_premiere_incoherence(sous_groupe))
+        else:
+            # Répartition non régulière : repli sur l'extraction par bloc
+            # individuel (moins fiable ici, mais reste un filet de sécurité).
+            for agent in agents_acte:
+                groupes_par_agent.append(extraire_progression_grade(agent.get("bloc_progression", "")))
+    else:
+        for agent in agents_acte:
+            groupes_par_agent.append(extraire_progression_grade(agent.get("bloc_progression", "")))
+
+    for idx, (agent, etapes) in enumerate(zip(agents_acte, groupes_par_agent), start=1):
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
-        etapes = extraire_progression_grade(agent.get("bloc_progression", ""))
 
         if not etapes:
             code = "DELAI_NON_VERIFIABLE"
