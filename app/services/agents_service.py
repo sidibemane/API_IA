@@ -1,3 +1,16 @@
+"""
+Service Agents — vérification d'identité (matricule/nom/prénom/date de
+naissance) contre la base du personnel, et vérification des délais
+réglementaires d'avancement grade/échelon via les tables de référence
+(corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
+
+Ce module était vide dans l'API déployée : toute cette logique existait
+dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
+ce qui explique l'absence de vérification matricule/nom/prénom et de
+calcul de délai d'avancement dans les résultats de l'API.
+"""
+
+import difflib
 import json
 import logging
 import os
@@ -127,15 +140,20 @@ def extraire_identite_agent(acte_text: str) -> list:
 #  3. VÉRIFICATION IDENTITÉ ACTE <-> BASE AGENTS
 # ═══════════════════════════════════════════════════════════
 
-def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_externes: list = None):
+def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_externes: list = None, corps_acte: str = None):
     """Extrait le/les agent(s) de l'acte, les recherche par matricule, puis
-    compare nom / prénom / date de naissance.
+    compare nom / prénom / date de naissance / corps.
 
     agents_externes : si fourni (liste de dicts au format de base_agents.json,
     envoyée par GIRAFE à chaque appel), c'est CETTE liste qui sert de source
     de vérité — pas le fichier local base_agents.json. Le fichier local ne
     sert que de repli pour les tests autonomes (dashboard), quand aucune
     donnée n'est fournie par l'appelant.
+
+    corps_acte : le corps déjà extrait du TEXTE de l'acte par
+    regles_service.extraire_infos_acte() — comparé au corps déclaré dans
+    agent_info/base_agents.json, pour détecter une incohérence (ex: l'acte
+    dit "Professeurs" mais la fiche agent dit "Médecins").
 
     Retourne (anomalies: list[dict], checks: dict) — même format que
     verifier_points_abc, pour fusion directe dans workflow_service."""
@@ -236,7 +254,34 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                 checks[f"{prefixe} — Date de naissance (acte vs base)"] = "✅ CONFORME"
 
         if agent_ref.get("corps"):
-            checks[f"{prefixe} — Corps (base)"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'})"
+            if corps_acte:
+                corps_acte_norm = _normaliser_texte_identite(corps_acte)
+                corps_base_norm = _normaliser_texte_identite(agent_ref["corps"])
+                # Comparaison tolérante : correspondance exacte, inclusion
+                # mutuelle (ex: base a un suffixe "NF REF" en plus), ou
+                # forte similarité — pour absorber les petites variations
+                # de formulation sans générer de faux rejets.
+                ratio = difflib.SequenceMatcher(None, corps_acte_norm, corps_base_norm).ratio()
+                correspond = (
+                    corps_acte_norm == corps_base_norm
+                    or corps_acte_norm in corps_base_norm
+                    or corps_base_norm in corps_acte_norm
+                    or ratio >= 0.6
+                )
+                if correspond:
+                    checks[f"{prefixe} — Corps (acte vs base)"] = f"✅ CONFORME — {agent_ref['corps']}"
+                else:
+                    code = "IDENTITE_CORPS_INCORRECT"
+                    checks[f"{prefixe} — Corps (acte vs base)"] = f"❌ Acte: '{corps_acte}' / Base: '{agent_ref['corps']}'"
+                    anomalies.append({
+                        "code": code,
+                        "description": f"Corps incohérent : acte='{corps_acte}', base='{agent_ref['corps']}' pour le matricule {agent_ref['matricule']}.",
+                        "criticite": determiner_criticite(code).value,
+                        "profil_concerne": profil, "etape": etape,
+                        "recommandation": "Vérifier le corps mentionné dans l'acte ou l'exactitude du matricule utilisé.",
+                    })
+            else:
+                checks[f"{prefixe} — Corps (base)"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'}) — corps non détecté dans le texte de l'acte, comparaison impossible"
 
     return anomalies, checks
 

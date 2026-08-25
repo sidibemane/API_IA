@@ -11,7 +11,6 @@ from app.services.regles_service import (
     calcul_delai_annees, get_delai_reglementaire, SIGNATAIRE_OFFICIEL,
 )
 from app.services.vision_service import analyser_visuel_acte
-from app.services.llm_service import verification_semantique
 
 logger = logging.getLogger(__name__)
 
@@ -83,12 +82,13 @@ CODES_BLOQUANTS = {
     "SIGNATURE_MINISTRE_MANQUANTE", "NUMERO_ACTE_MANQUANT", "ERREUR_LECTURE",
     "DELAI_NON_CONFORME", "MATRICULE_NON_TROUVE_DANS_ACTE", "AGENT_INCONNU_BASE",
     "IDENTITE_NOM_INCORRECT", "IDENTITE_PRENOM_INCORRECT",
-    "IDENTITE_DATE_NAISSANCE_INCORRECTE", "DELAI_AVANCEMENT_INCORRECT",
+    "IDENTITE_DATE_NAISSANCE_INCORRECTE", "IDENTITE_CORPS_INCORRECT",
+    "DELAI_AVANCEMENT_INCORRECT",
     "SIGNATAIRE_INCORRECT",
 }
 CODES_IMPORTANTS = {
-    "DATES_MANQUANTES", "LLM_INCOHERENCE_OBJET",
-    "LLM_CONTRADICTION_INTERNE", "DELAI_NON_VERIFIABLE", "DELAI_AVANCEMENT_A_VERIFIER",
+    "DATES_MANQUANTES",
+    "DELAI_NON_VERIFIABLE", "DELAI_AVANCEMENT_A_VERIFIER",
 }
 CODES_INFORMATIFS = {"TEXTE_EXTRACTION_PARTIELLE", "LLM_VISAS_A_VERIFIER"}
 
@@ -115,12 +115,11 @@ class MoteurValidationGIRAFE:
         self.checks_textuels: dict = {}
         self.etapes_textuelles_faites: set = set()
         self.historique: list = []
-        # Cache par empreinte de contenu — évite de re-solliciter Gemini/HF
-        # pour un fichier ou un texte déjà analysé, MAIS relance
-        # automatiquement l'analyse dès que le contenu change réellement
-        # (ex: un tampon vient d'être ajouté entre deux étapes).
+        # Cache par empreinte de contenu — évite de ré-analyser un fichier
+        # déjà vu, MAIS relance automatiquement l'analyse dès que le
+        # contenu change réellement (ex: un tampon vient d'être ajouté
+        # entre deux étapes).
         self.cache_vision: dict = {}
-        self.cache_semantique: dict = {}
 
     def _analyser_visuel_avec_cache(self, pdf_bytes: bytes) -> dict:
         """Réutilise le résultat déjà obtenu si CE fichier exact a déjà été
@@ -134,18 +133,6 @@ class MoteurValidationGIRAFE:
 
         resultat = analyser_visuel_acte(pdf_bytes)
         self.cache_vision[empreinte] = resultat
-        return resultat
-
-    def _verification_semantique_avec_cache(self, acte_text: str) -> dict:
-        """Même principe pour la vérification sémantique (LLM) : réutilise
-        le résultat si CE texte exact a déjà été analysé."""
-        empreinte = hashlib.sha256(acte_text.encode("utf-8")).hexdigest()
-        if empreinte in self.cache_semantique:
-            logger.info(f"♻️  Analyse sémantique réutilisée depuis le cache (empreinte {empreinte[:8]}...)")
-            return self.cache_semantique[empreinte]
-
-        resultat = verification_semantique(acte_text)
-        self.cache_semantique[empreinte] = resultat
         return resultat
 
     def initialiser_workflow(self, acte_text: str) -> dict:
@@ -220,25 +207,13 @@ class MoteurValidationGIRAFE:
             else:
                 checks["Signataire"] = "✅ CONFORME"
 
-            # Vérification sémantique LLM
-            try:
-                sem = self._verification_semantique_avec_cache(acte_text)
-                if sem.get("coherence_objet", "").upper().startswith("NON"):
-                    code = "LLM_INCOHERENCE_OBJET"
-                    anomalies.append({
-                        "code": code,
-                        "description": "Qwen 14B signale une incohérence entre l'objet et le corps de l'acte.",
-                        "criticite": determiner_criticite(code).value,
-                        "profil_concerne": "Global", "etape": 0,
-                        "recommandation": "Faire relire l'acte par un agent.",
-                    })
-            except Exception as e:
-                logger.warning(f"Vérification sémantique indisponible : {e}")
-
             # Identité agent (matricule / nom / prénom / date de naissance vs base des agents)
             try:
                 from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, verifier_delais_avancement
-                anomalies_id, checks_id = verifier_identite_agent(acte_text, etape, profil, agents_externes)
+                anomalies_id, checks_id = verifier_identite_agent(
+                    acte_text, etape, profil, agents_externes,
+                    corps_acte=resultats_abc["infos"]["corps"],
+                )
                 anomalies.extend(anomalies_id)
                 checks.update(checks_id)
 
