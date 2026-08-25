@@ -1,14 +1,3 @@
-"""
-Service Agents — vérification d'identité (matricule/nom/prénom/date de
-naissance) contre la base du personnel, et vérification des délais
-réglementaires d'avancement grade/échelon via les tables de référence
-(corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
-
-Ce module était vide dans l'API déployée : toute cette logique existait
-dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
-ce qui explique l'absence de vérification matricule/nom/prénom et de
-calcul de délai d'avancement dans les résultats de l'API.
-"""
 
 import difflib
 import json
@@ -457,7 +446,23 @@ def extraire_progression_grade(bloc_texte: str):
     dates = [d.replace(".", "/") for d in _RE_DATE_PROGRESSION.findall(bloc_texte)]
     if len(grades) != len(dates) or len(grades) < 2:
         return None
-    return list(zip(grades, dates))
+
+    paires = list(zip(grades, dates))
+
+    # Garde-fou : dans une vraie progression de carrière, les dates
+    # avancent TOUJOURS dans le temps. Si l'extraction du tableau PDF a
+    # mélangé des lignes de deux agents différents (table multi-agents),
+    # une date qui recule ou qui n'avance pas est le signe fiable de cette
+    # confusion — on tronque la séquence à ce point-là plutôt que de
+    # continuer à produire des comparaisons absurdes en aval.
+    paires_valides = [paires[0]]
+    for grade, date in paires[1:]:
+        derniere_date = paires_valides[-1][1]
+        if calcul_delai_annees(derniere_date, date) <= 0:
+            break
+        paires_valides.append((grade, date))
+
+    return paires_valides
 
 
 def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, hierarchie: str, corps: str, etape: int, profil: str):
@@ -497,6 +502,29 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
             date_apres = etapes[i][1]
 
             delai_constate = calcul_delai_annees(date_avant, date_apres)
+
+            # Garde-fou : un délai négatif ou nul est impossible dans une
+            # vraie progression de carrière — c'est le signe que le tableau
+            # a été mal extrait (dates/grades de deux agents mélangés), pas
+            # une vraie violation de règle métier. On le signale comme "à
+            # vérifier manuellement" plutôt que comme une fausse anomalie.
+            if delai_constate <= 0:
+                code = "DELAI_NON_VERIFIABLE"
+                checks[libelle_etape] = f"⚠ Délai constaté incohérent ({delai_constate} an(s)) — extraction du tableau probablement erronée, à vérifier manuellement"
+                anomalies.append({
+                    "code": code,
+                    "description": (
+                        f"Délai incohérent (négatif ou nul) détecté pour l'agent "
+                        f"{agent.get('nom') or ''} (matricule {agent.get('matricule')}) : "
+                        f"{grade_avant} ({date_avant}) → {grade_apres} ({date_apres}). "
+                        f"Cela indique probablement une erreur d'extraction du tableau, pas une vraie anomalie."
+                    ),
+                    "criticite": determiner_criticite(code).value,
+                    "profil_concerne": profil, "etape": etape,
+                    "recommandation": "Vérifier manuellement le tableau de progression de cet agent dans l'acte original.",
+                })
+                continue
+
             delai_reg, regle_appliquee, confirme_par_table = get_delai_reglementaire_v2(
                 acte_text, statut, corps, grade_avant
             )
