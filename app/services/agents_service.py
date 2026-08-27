@@ -4,10 +4,6 @@ naissance) contre la base du personnel, et vérification des délais
 réglementaires d'avancement grade/échelon via les tables de référence
 (corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
 
-Ce module était vide dans l'API déployée : toute cette logique existait
-dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
-ce qui explique l'absence de vérification matricule/nom/prénom et de
-calcul de délai d'avancement dans les résultats de l'API.
 """
 
 import difflib
@@ -308,11 +304,20 @@ def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
         return anomalies, checks
 
     infos_corps = CPS_INFOS_PAR_CODE.get(code_corps, {})
-    type_reel = infos_corps.get("cps_typecorps_code")  # "FONCT" ou "NON_FONCT"
+    type_brut = infos_corps.get("cps_typecorps_code") or ""
     libelle_corps = infos_corps.get("cps_libelle", code_corps)
 
-    if type_reel not in ("FONCT", "NON_FONCT"):
-        return anomalies, checks  # donnée de référence incomplète pour ce corps, on ne bloque pas
+    # La colonne cps_typecorps_code utilise plusieurs variantes selon les
+    # corps : "FONCT" / "NON_FONCT" pour la plupart, mais "ENS_FONCT" /
+    # "ENS_NON_FONCT" pour les corps de l'Enseignement (préfixe "ENS_").
+    # On se base sur la présence de "NON_FONCT" dans la valeur plutôt que
+    # sur une égalité stricte, pour couvrir toutes ces variantes.
+    if "NON_FONCT" in type_brut:
+        type_reel = "NON_FONCT"
+    elif "FONCT" in type_brut:
+        type_reel = "FONCT"
+    else:
+        return anomalies, checks  # donnée de référence vraiment absente/inattendue, on ne bloque pas
 
     texte_norm = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
     cite_loi_non_fonctionnaire = "97-17" in texte_norm or "74-347" in texte_norm
@@ -451,9 +456,14 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
     meilleurs = [c for c in candidats if len(c[0]) == max_len]
     if len(meilleurs) == 1:
         return meilleurs[0][1]
-    type_attendu = "NON_FONCT" if statut == "NF" else "FONCT"
+    # "NON_FONCT" doit aussi matcher la variante "ENS_NON_FONCT" (corps de
+    # l'Enseignement) — d'où une recherche de sous-chaîne plutôt qu'une
+    # égalité stricte.
+    cherche_non_fonct = statut == "NF"
     for lib, code, typ in meilleurs:
-        if typ == type_attendu:
+        typ = typ or ""
+        est_non_fonct = "NON_FONCT" in typ
+        if est_non_fonct == cherche_non_fonct:
             return code
     return meilleurs[0][1]
 
