@@ -209,10 +209,42 @@ def verifier_points_abc(acte_text: str) -> dict:
 
 
 def detecter_type_acte(acte_text: str) -> str:
-    """Détecte le type d'acte : retraite / avancement / autre."""
+    """Détecte le type d'acte : retraite (fonctionnaire uniquement) /
+    avancement / autre.
+
+    La distinction fonctionnaire / non-fonctionnaire se base EN PRIORITÉ
+    sur les références légales obligatoires citées dans l'acte (RÈGLE V-01
+    de la base de connaissance métier) :
+      - Non-fonctionnaire (NF) : Loi n°97-17 (Code du travail) et/ou
+        Décret n°74-347
+      - Fonctionnaire : Loi n°61-33 (statut général des fonctionnaires)
+
+    C'est plus fiable qu'une simple recherche du mot "fonctionnaire", qui
+    apparaît aussi à l'intérieur de "non fonctionnaire". Les mots-clés
+    textuels ne servent plus que de repli, si aucune des deux références
+    légales n'est trouvée dans le texte.
+
+    Important : un acte de retraite pour un NON-fonctionnaire ne doit PAS
+    être classé "retraite_fonctionnaire" (circuit à 13 étapes avec tampon
+    DP) — il doit tomber sur le circuit "autre" (12 étapes, sans DP)."""
     texte_normalise = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
 
-    if "retraite" in texte_normalise and ("fonctionnaire" in texte_normalise or "61-33" in texte_normalise):
+    est_retraite = "retraite" in texte_normalise
+
+    cite_loi_non_fonctionnaire = "97-17" in texte_normalise or "74-347" in texte_normalise
+    cite_loi_fonctionnaire = "61-33" in texte_normalise
+
+    if cite_loi_fonctionnaire and not cite_loi_non_fonctionnaire:
+        est_fonctionnaire = True
+    elif cite_loi_non_fonctionnaire and not cite_loi_fonctionnaire:
+        est_fonctionnaire = False
+    else:
+        # Repli sur les mots-clés textuels si aucune référence légale
+        # claire (ou les deux à la fois, cas ambigu) n'a été trouvée.
+        est_non_fonctionnaire_mot = "non fonctionnaire" in texte_normalise or "non-fonctionnaire" in texte_normalise
+        est_fonctionnaire = "fonctionnaire" in texte_normalise and not est_non_fonctionnaire_mot
+
+    if est_retraite and est_fonctionnaire:
         return "retraite_fonctionnaire"
     if "avancement" in texte_normalise and "echelon" in texte_normalise:
         return "avancement_echelon"

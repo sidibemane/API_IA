@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import unicodedata
 from datetime import datetime
 from typing import Optional
 
@@ -89,7 +90,7 @@ CODES_IMPORTANTS = {
     "DATES_MANQUANTES",
     "DELAI_NON_VERIFIABLE", "DELAI_AVANCEMENT_A_VERIFIER", "DELAI_AVANCEMENT_INCORRECT",
 }
-CODES_INFORMATIFS = {"TEXTE_EXTRACTION_PARTIELLE", "LLM_VISAS_A_VERIFIER"}
+CODES_INFORMATIFS = {"TEXTE_EXTRACTION_PARTIELLE", "LLM_VISAS_A_VERIFIER", "VISA_INCOHERENT"}
 
 
 def determiner_criticite(code: str) -> NiveauCriticite:
@@ -208,7 +209,7 @@ class MoteurValidationGIRAFE:
 
             # Identité agent (matricule / nom / prénom / date de naissance vs base des agents)
             try:
-                from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, verifier_delais_avancement
+                from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, verifier_delais_avancement, verifier_visa_coherent
                 anomalies_id, checks_id = verifier_identite_agent(
                     acte_text, etape, profil, agents_externes,
                     corps_acte=resultats_abc["infos"]["corps"],
@@ -216,17 +217,30 @@ class MoteurValidationGIRAFE:
                 anomalies.extend(anomalies_id)
                 checks.update(checks_id)
 
-                # Délai d'avancement grade/échelon (utilise les infos déjà extraites ci-dessus)
-                agents_acte = extraire_identite_agent(acte_text)
-                anomalies_delai, checks_delai = verifier_delais_avancement(
-                    acte_text, agents_acte,
-                    resultats_abc["infos"]["statut"],
-                    resultats_abc["infos"]["hierarchie"],
-                    resultats_abc["infos"]["corps"],
-                    etape, profil,
-                )
-                anomalies.extend(anomalies_delai)
-                checks.update(checks_delai)
+                # Cohérence du visa (loi/décret cité) vs vrai statut du corps
+                anomalies_visa, checks_visa = verifier_visa_coherent(acte_text, etape, profil)
+                anomalies.extend(anomalies_visa)
+                checks.update(checks_visa)
+
+                # Délai d'avancement grade/échelon — UNIQUEMENT si ce n'est
+                # PAS un acte de retraite (un départ en retraite ne
+                # comporte jamais de calcul d'avancement de grade/échelon,
+                # peu importe le circuit détecté).
+                est_acte_retraite = "retraite" in unicodedata.normalize(
+                    "NFKD", acte_text.lower()
+                ).encode("ascii", "ignore").decode("ascii")
+
+                if not est_acte_retraite:
+                    agents_acte = extraire_identite_agent(acte_text)
+                    anomalies_delai, checks_delai = verifier_delais_avancement(
+                        acte_text, agents_acte,
+                        resultats_abc["infos"]["statut"],
+                        resultats_abc["infos"]["hierarchie"],
+                        resultats_abc["infos"]["corps"],
+                        etape, profil,
+                    )
+                    anomalies.extend(anomalies_delai)
+                    checks.update(checks_delai)
             except Exception as e:
                 logger.warning(f"Vérification identité/délai indisponible : {e}")
 

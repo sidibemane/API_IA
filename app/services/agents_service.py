@@ -1,3 +1,15 @@
+"""
+Service Agents — vérification d'identité (matricule/nom/prénom/date de
+naissance) contre la base du personnel, et vérification des délais
+réglementaires d'avancement grade/échelon via les tables de référence
+(corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
+
+Ce module était vide dans l'API déployée : toute cette logique existait
+dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
+ce qui explique l'absence de vérification matricule/nom/prénom et de
+calcul de délai d'avancement dans les résultats de l'API.
+"""
+
 import difflib
 import json
 import logging
@@ -270,6 +282,66 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                     })
             else:
                 checks[f"{prefixe} — Corps (base)"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'}) — corps non détecté dans le texte de l'acte, comparaison impossible"
+
+    return anomalies, checks
+
+
+def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
+    """Vérifie que les références légales (loi/décret) citées dans l'acte
+    correspondent bien au VRAI statut (FONCT/NON_FONCT) du corps détecté,
+    selon la base de référence corps.csv — pas seulement à ce que le texte
+    de l'acte prétend lui-même. Conforme à la RÈGLE V-01 de la base de
+    connaissance métier :
+      - Fonctionnaire  → doit citer la Loi n°61-33
+      - Non-fonctionnaire → doit citer la Loi n°97-17 et/ou le Décret n°74-347
+    """
+    from app.services.workflow_service import determiner_criticite  # import différé (anti-cycle)
+
+    anomalies = []
+    checks = {}
+
+    if CORPS_DF is None:
+        return anomalies, checks
+
+    code_corps = detecter_corps_depuis_texte(acte_text)
+    if not code_corps:
+        return anomalies, checks
+
+    infos_corps = CPS_INFOS_PAR_CODE.get(code_corps, {})
+    type_reel = infos_corps.get("cps_typecorps_code")  # "FONCT" ou "NON_FONCT"
+    libelle_corps = infos_corps.get("cps_libelle", code_corps)
+
+    if type_reel not in ("FONCT", "NON_FONCT"):
+        return anomalies, checks  # donnée de référence incomplète pour ce corps, on ne bloque pas
+
+    texte_norm = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
+    cite_loi_non_fonctionnaire = "97-17" in texte_norm or "74-347" in texte_norm
+    cite_loi_fonctionnaire = "61-33" in texte_norm
+
+    # On vérifie uniquement que LA LOI ATTENDUE pour ce corps est bien
+    # présente dans l'acte — peu importe si d'autres références légales
+    # apparaissent aussi (un agent peut légitimement ajouter des décrets
+    # spécifiques à son corps, non répertoriés dans notre base ; ce n'est
+    # pas une erreur).
+    loi_attendue_presente = cite_loi_fonctionnaire if type_reel == "FONCT" else cite_loi_non_fonctionnaire
+
+    if loi_attendue_presente:
+        attendu = "Loi n°61-33 (fonctionnaires)" if type_reel == "FONCT" else "Loi n°97-17 / Décret n°74-347 (non-fonctionnaires)"
+        checks["Visa (loi/décret) vs corps"] = f"✅ CONFORME — {libelle_corps} ({type_reel}), {attendu} bien présent(e)"
+    else:
+        code = "VISA_INCOHERENT"
+        attendu = "la Loi n°61-33 (fonctionnaires)" if type_reel == "FONCT" else "la Loi n°97-17 / le Décret n°74-347 (non-fonctionnaires)"
+        checks["Visa (loi/décret) vs corps"] = f"ℹ Corps '{libelle_corps}' ({type_reel}) — {attendu} non trouvée dans l'acte, à vérifier"
+        anomalies.append({
+            "code": code,
+            "description": (
+                f"Pour le corps '{libelle_corps}' ({type_reel}), la référence légale "
+                f"attendue ({attendu}) n'a pas été retrouvée dans le texte de l'acte."
+            ),
+            "criticite": determiner_criticite(code).value,
+            "profil_concerne": profil, "etape": etape,
+            "recommandation": "Vérifier que la référence légale attendue pour ce corps figure bien dans l'acte.",
+        })
 
     return anomalies, checks
 
