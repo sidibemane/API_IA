@@ -132,6 +132,89 @@ def extraire_identite_agent(acte_text: str) -> list:
     return agents
 
 
+_MOIS_FR = {
+    "janvier": 1, "fevrier": 2, "février": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
+    "juillet": 7, "aout": 8, "août": 8, "septembre": 9, "octobre": 10, "novembre": 11,
+    "decembre": 12, "décembre": 12,
+}
+_RE_DATE_NAISSANCE_LETTRES = re.compile(
+    r"\b(\d{1,2})(?:er)?\s+(" + "|".join(_MOIS_FR.keys()) + r")\s+(\d{4})\b", re.IGNORECASE
+)
+
+
+def _normaliser_date_lettres(jour: str, mois_texte: str, annee: str) -> str:
+    mois_num = _MOIS_FR.get(mois_texte.lower())
+    return f"{int(jour):02d}/{mois_num:02d}/{annee}" if mois_num else ""
+
+
+_RE_NOM_TABLEAU_ENGAGEMENT = re.compile(
+    r"((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,2})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*\n?\s*$"
+)
+
+
+def _RE_DATE_NAISSANCE_TOUTES_FORMES(texte: str):
+    """Trouve les dates de naissance sous DEUX formes possibles :
+    - numérique avec ancrage 'né(e) le' (actes narratifs classiques)
+    - en toutes lettres, ex: '10 janvier 1999' (fréquent dans les tableaux
+      d'engagement de type 'Prénoms et noms | Date et lieu de naissance | ...')
+    Retourne une liste de (position_debut, position_fin, date_normalisee)."""
+    resultats = []
+    for m in _RE_DATE_NAISSANCE.finditer(texte):
+        resultats.append((m.start(), m.end(), m.group(1).strip()))
+    for m in _RE_DATE_NAISSANCE_LETTRES.finditer(texte):
+        date_norm = _normaliser_date_lettres(m.group(1), m.group(2), m.group(3))
+        if date_norm:
+            resultats.append((m.start(), m.end(), date_norm))
+    resultats.sort(key=lambda r: r[0])
+    return resultats
+
+
+_RE_NOM_AVANT_DATE_NAISSANCE = re.compile(
+    r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)"
+)
+
+
+def extraire_identite_par_date_naissance(acte_text: str) -> list:
+    """Repli utilisé quand AUCUN matricule n'est présent dans l'acte — cas
+    des actes d'ENGAGEMENT, NOMINATION ou RÉGULARISATION, où l'agent n'a
+    pas encore de matricule attribué. Dans ces actes, la date de naissance
+    sert d'identifiant fiable à la place — soit citée en texte narratif
+    ("Madame X, née le 03/07/1984"), soit dans un tableau ("Prénoms et
+    noms | Date et lieu de naissance | ..." avec la date en toutes
+    lettres, ex: "10 janvier 1999")."""
+    agents = []
+    for debut, fin, date_naissance in _RE_DATE_NAISSANCE_TOUTES_FORMES(acte_text):
+        fenetre_avant = acte_text[max(0, debut - 400):debut]
+
+        nom, prenom = None, None
+        occurrences_nom = list(_RE_NOM_AVANT_DATE_NAISSANCE.finditer(fenetre_avant))
+        if occurrences_nom:
+            m_nom = occurrences_nom[-1]
+            prenom = " ".join(m_nom.group(1).split())
+            nom = m_nom.group(2).strip()
+        else:
+            # Repli tableau : pas de "Madame/Monsieur", juste
+            # "Prénom(s)\nNOM" juste avant la date (ligne de tableau).
+            m_nom = _RE_NOM_TABLEAU_ENGAGEMENT.search(fenetre_avant[-60:])
+            if m_nom:
+                prenom = " ".join(m_nom.group(1).split())
+                nom = m_nom.group(2).strip()
+
+        if not nom:
+            continue
+
+        # Évite les doublons : la même personne est souvent citée dans
+        # plusieurs articles du même acte (identité + majoration
+        # d'ancienneté + régularisation de grade, par exemple).
+        deja_present = any(a["nom"] == nom and a["date_naissance"] == date_naissance for a in agents)
+        if not deja_present:
+            agents.append({
+                "matricule": None, "nom": nom, "prenom": prenom,
+                "date_naissance": date_naissance, "bloc_progression": "",
+            })
+    return agents
+
+
 # ═══════════════════════════════════════════════════════════
 #  3. VÉRIFICATION IDENTITÉ ACTE <-> BASE AGENTS
 # ═══════════════════════════════════════════════════════════
@@ -172,16 +255,24 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
         return anomalies, checks
 
     agents_acte = extraire_identite_agent(acte_text)
+    mode_identification = "matricule"
+
+    if not agents_acte:
+        # Repli : actes d'ENGAGEMENT / NOMINATION / RÉGULARISATION, où
+        # l'agent n'a pas encore de matricule attribué — on identifie
+        # alors par date de naissance à la place.
+        agents_acte = extraire_identite_par_date_naissance(acte_text)
+        mode_identification = "date_naissance"
 
     if not agents_acte:
         code = "MATRICULE_NON_TROUVE_DANS_ACTE"
-        checks["Identification agent(s)"] = "❌ AUCUN MATRICULE TROUVÉ DANS L'ACTE"
+        checks["Identification agent(s)"] = "❌ AUCUN MATRICULE NI DATE DE NAISSANCE EXPLOITABLE TROUVÉ DANS L'ACTE"
         anomalies.append({
             "code": code,
-            "description": "Aucun matricule n'a pu être identifié dans le texte de l'acte.",
+            "description": "Ni matricule ni date de naissance n'ont pu être identifiés dans le texte de l'acte.",
             "criticite": determiner_criticite(code).value,
             "profil_concerne": profil, "etape": etape,
-            "recommandation": "Vérifier que le(s) matricule(s) de(s) agent(s) figure(nt) bien et lisiblement dans l'acte.",
+            "recommandation": "Vérifier que le matricule ou, à défaut, la date de naissance de l'agent figure bien et lisiblement dans l'acte.",
         })
         return anomalies, checks
 
@@ -189,30 +280,58 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
 
     for idx, identite_acte in enumerate(agents_acte, start=1):
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
-        cle = _normaliser_texte_identite(identite_acte["matricule"])
-        agent_ref = index_a_utiliser.get(cle)
+
+        if mode_identification == "matricule":
+            cle = _normaliser_texte_identite(identite_acte["matricule"])
+            agent_ref = index_a_utiliser.get(cle)
+        else:
+            # Recherche par date de naissance (+ nom si disponible, pour
+            # départager en cas d'homonymie de date) — pas d'index
+            # pré-construit, mais la liste d'agents fournie par appel
+            # reste courte, une recherche linéaire suffit.
+            date_norm_acte = _normaliser_texte_identite(identite_acte.get("date_naissance"))
+            agent_ref = None
+            candidats = [
+                a for a in base_a_utiliser
+                if _normaliser_texte_identite(a.get("date_naissance")) == date_norm_acte
+            ]
+            if len(candidats) == 1:
+                agent_ref = candidats[0]
+            elif len(candidats) > 1 and identite_acte.get("nom"):
+                nom_norm_acte = _normaliser_texte_identite(identite_acte["nom"])
+                for c in candidats:
+                    if _normaliser_texte_identite(c.get("nom")) == nom_norm_acte:
+                        agent_ref = c
+                        break
 
         if agent_ref is None:
             code = "AGENT_INCONNU_BASE"
-            checks[f"{prefixe} — Identification"] = f"❌ MATRICULE INCONNU DANS LA BASE ({identite_acte['matricule']})"
+            identifiant_manquant = (
+                f"matricule {identite_acte['matricule']}" if mode_identification == "matricule"
+                else f"date de naissance {identite_acte.get('date_naissance')} ({identite_acte.get('nom')} {identite_acte.get('prenom')})"
+            )
+            checks[f"{prefixe} — Identification"] = f"❌ AGENT INCONNU DANS LA BASE ({identifiant_manquant})"
             anomalies.append({
                 "code": code,
-                "description": f"Le matricule '{identite_acte['matricule']}' cité dans l'acte n'existe pas dans la base des agents.",
+                "description": f"L'agent identifié par {identifiant_manquant} n'existe pas dans la base des agents.",
                 "criticite": determiner_criticite(code).value,
                 "profil_concerne": profil, "etape": etape,
-                "recommandation": "Vérifier le matricule (erreur de saisie possible) ou signaler un agent non répertorié.",
+                "recommandation": "Vérifier l'identifiant (erreur de saisie possible) ou signaler un agent non répertorié.",
             })
             continue
 
-        checks[f"{prefixe} — Identification"] = f"✅ TROUVÉ — {agent_ref['nom']} {agent_ref['prenom']} (matricule {agent_ref['matricule']})"
-        checks[f"{prefixe} — Matricule (acte vs base)"] = f"✅ CONFORME — '{identite_acte['matricule']}' trouvé dans la base des agents"
+        checks[f"{prefixe} — Identification"] = f"✅ TROUVÉ — {agent_ref['nom']} {agent_ref['prenom']} (matricule {agent_ref.get('matricule') or 'n/c — identifié par date de naissance'})"
+        if mode_identification == "matricule":
+            checks[f"{prefixe} — Matricule (acte vs base)"] = f"✅ CONFORME — '{identite_acte['matricule']}' trouvé dans la base des agents"
+        else:
+            checks[f"{prefixe} — Date de naissance (acte vs base)"] = f"✅ CONFORME — '{identite_acte.get('date_naissance')}' trouvée dans la base des agents"
 
         if identite_acte["nom"] and _normaliser_texte_identite(identite_acte["nom"]) != _normaliser_texte_identite(agent_ref.get("nom")):
             code = "IDENTITE_NOM_INCORRECT"
             checks[f"{prefixe} — Nom (acte vs base)"] = f"❌ Acte: '{identite_acte['nom']}' / Base: '{agent_ref.get('nom')}'"
             anomalies.append({
                 "code": code,
-                "description": f"Nom incohérent : acte='{identite_acte['nom']}', base='{agent_ref.get('nom')}' pour le matricule {agent_ref['matricule']}.",
+                "description": f"Nom incohérent : acte='{identite_acte['nom']}', base='{agent_ref.get('nom')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
                 "criticite": determiner_criticite(code).value,
                 "profil_concerne": profil, "etape": etape,
                 "recommandation": "Vérifier l'orthographe du nom ou l'exactitude du matricule utilisé.",
@@ -225,7 +344,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
             checks[f"{prefixe} — Prénom (acte vs base)"] = f"❌ Acte: '{identite_acte['prenom']}' / Base: '{agent_ref.get('prenom')}'"
             anomalies.append({
                 "code": code,
-                "description": f"Prénom incohérent : acte='{identite_acte['prenom']}', base='{agent_ref.get('prenom')}' pour le matricule {agent_ref['matricule']}.",
+                "description": f"Prénom incohérent : acte='{identite_acte['prenom']}', base='{agent_ref.get('prenom')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
                 "criticite": determiner_criticite(code).value,
                 "profil_concerne": profil, "etape": etape,
                 "recommandation": "Vérifier l'orthographe du prénom ou l'exactitude du matricule utilisé.",
@@ -241,7 +360,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                 checks[f"{prefixe} — Date de naissance (acte vs base)"] = f"❌ Acte: '{identite_acte['date_naissance']}' / Base: '{agent_ref.get('date_naissance')}'"
                 anomalies.append({
                     "code": code,
-                    "description": f"Date de naissance incohérente : acte='{identite_acte['date_naissance']}', base='{agent_ref.get('date_naissance')}' pour le matricule {agent_ref['matricule']}.",
+                    "description": f"Date de naissance incohérente : acte='{identite_acte['date_naissance']}', base='{agent_ref.get('date_naissance')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
                     "criticite": determiner_criticite(code).value,
                     "profil_concerne": profil, "etape": etape,
                     "recommandation": "Vérifier la date de naissance ou l'exactitude du matricule utilisé.",
@@ -271,7 +390,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                     checks[f"{prefixe} — Corps (acte vs base)"] = f"❌ Acte: '{corps_acte}' / Base: '{agent_ref['corps']}'"
                     anomalies.append({
                         "code": code,
-                        "description": f"Corps incohérent : acte='{corps_acte}', base='{agent_ref['corps']}' pour le matricule {agent_ref['matricule']}.",
+                        "description": f"Corps incohérent : acte='{corps_acte}', base='{agent_ref['corps']}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
                         "criticite": determiner_criticite(code).value,
                         "profil_concerne": profil, "etape": etape,
                         "recommandation": "Vérifier le corps mentionné dans l'acte ou l'exactitude du matricule utilisé.",

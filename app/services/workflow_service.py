@@ -87,10 +87,9 @@ CODES_BLOQUANTS = {
     "SIGNATAIRE_INCORRECT",
 }
 CODES_IMPORTANTS = {
-    "DATES_MANQUANTES",
-    "DELAI_NON_VERIFIABLE", "DELAI_AVANCEMENT_A_VERIFIER", "DELAI_AVANCEMENT_INCORRECT",
+    "DATES_MANQUANTES", "DELAI_AVANCEMENT_A_VERIFIER", "DELAI_AVANCEMENT_INCORRECT",
 }
-CODES_INFORMATIFS = {"TEXTE_EXTRACTION_PARTIELLE", "LLM_VISAS_A_VERIFIER", "VISA_INCOHERENT"}
+CODES_INFORMATIFS = {"TEXTE_EXTRACTION_PARTIELLE", "LLM_VISAS_A_VERIFIER", "VISA_INCOHERENT", "DELAI_NON_VERIFIABLE"}
 
 
 def determiner_criticite(code: str) -> NiveauCriticite:
@@ -422,7 +421,7 @@ def _purger_moteurs_expires():
     for aid in expires:
         del _moteurs_par_acte[aid]
     if expires:
-        logger.info(f"🧹 {len(expires)} acte(s) expiré(s) purgé(s) du cache (inactifs >2h)")
+        logger.info(f" {len(expires)} acte(s) expiré(s) purgé(s) du cache (inactifs >2h)")
 
 
 def get_moteur(acte_id: str) -> MoteurValidationGIRAFE:
