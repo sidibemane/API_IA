@@ -4,6 +4,7 @@ naissance) contre la base du personnel, et vérification des délais
 réglementaires d'avancement grade/échelon via les tables de référence
 (corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
 
+
 """
 
 import difflib
@@ -152,16 +153,36 @@ _RE_NOM_TABLEAU_ENGAGEMENT = re.compile(
 )
 
 
+_MOTS_CITATION_LEGALE = ("decret", "loi", "arrete", "instruction", "circulaire", "n°", "n ")
+
+
+def _est_citation_legale(texte: str, position_debut: int) -> bool:
+    """Vrai si la date trouvée à cette position est en fait la date d'un
+    décret/loi/arrêté cité en référence ('VU le décret n°2015-583 du 11
+    mai 2015...') — PAS une date de naissance. On regarde les ~50
+    caractères juste avant la date."""
+    contexte_avant = unicodedata.normalize(
+        "NFKD", texte[max(0, position_debut - 50):position_debut].lower()
+    ).encode("ascii", "ignore").decode("ascii")
+    return any(mot in contexte_avant for mot in _MOTS_CITATION_LEGALE)
+
+
 def _RE_DATE_NAISSANCE_TOUTES_FORMES(texte: str):
     """Trouve les dates de naissance sous DEUX formes possibles :
     - numérique avec ancrage 'né(e) le' (actes narratifs classiques)
     - en toutes lettres, ex: '10 janvier 1999' (fréquent dans les tableaux
       d'engagement de type 'Prénoms et noms | Date et lieu de naissance | ...')
+    Exclut les dates en lettres qui sont en réalité des citations légales
+    ('décret n°X du 11 mai 2015') — seul le format numérique est ancré sur
+    'né(e) le', donc pas de risque de confusion pour lui ; le format en
+    lettres, lui, n'a pas cet ancrage et doit donc être filtré.
     Retourne une liste de (position_debut, position_fin, date_normalisee)."""
     resultats = []
     for m in _RE_DATE_NAISSANCE.finditer(texte):
         resultats.append((m.start(), m.end(), m.group(1).strip()))
     for m in _RE_DATE_NAISSANCE_LETTRES.finditer(texte):
+        if _est_citation_legale(texte, m.start()):
+            continue
         date_norm = _normaliser_date_lettres(m.group(1), m.group(2), m.group(3))
         if date_norm:
             resultats.append((m.start(), m.end(), date_norm))
