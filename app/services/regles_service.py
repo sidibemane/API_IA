@@ -42,10 +42,7 @@ def extraire_infos_acte(acte: str) -> dict:
     }
 
     texte_upper = acte.upper()
-    # ⚠️ CORRECTIF BUG 1 : simple espace (avant : double espace "  ".join(...))
-    # qui empêchait TOUT match de "corps_cibles" (ex: "INSTITUTEURS ADJOINTS"
-    # ne matchait jamais car le texte normalisé contenait "INSTITUTEURS  ADJOINTS").
-    texte_normalise = " ".join(texte_upper.split())
+    texte_normalise = "  ".join(texte_upper.split())
     lignes = acte.split("\n")
 
     # 1) EN-TÊTE
@@ -92,25 +89,8 @@ def extraire_infos_acte(acte: str) -> dict:
             infos["type_acte"] = "ARRÊTÉ"
 
     # 4) CORPS
-    # 4a) PRIORITÉ : corps de DESTINATION explicite (actes de nomination /
-    # reclassement / intégration). Dans ces actes, le texte cite souvent
-    # DEUX corps : celui de départ ("Les instituteurs adjoints...") et
-    # celui d'arrivée ("...reclassés dans le corps des Instituteurs...").
-    # Le tableau grade/échelon qui suit concerne toujours le corps
-    # D'ARRIVÉE (celui après "dans le corps de/des/du/d'"), pas celui de
-    # départ. On le cherche donc en priorité, avant tout le reste.
-    m_corps_dest = re.search(
-        r"DANS\s+LE\s+CORPS\s+D[EU'ES]*\s+([A-ZÉÈÀÂÎÔÛÇ][A-ZÉÈÀÂÎÔÛÇ\s\-']{2,60}?)"
-        r"(?=\s*(?:,|\.|;|\s+HIERARCHIE\b|\s+CONFORMEMENT\b|\s+CATEGORIE\b|$))",
-        texte_normalise,
-    )
-    if m_corps_dest:
-        infos["corps"] = m_corps_dest.group(1).strip()
-
-    # 4b) Repli : liste de corps connus recherchés n'importe où dans le texte
     corps_cibles = [
         "INSTITUTEURS ADJOINTS NF REF", "INSTITUTEURS ADJOINTS", "INSTITUTEUR ADJOINT",
-        "INSTITUTEURS", "INSTITUTEUR",
         "PROFESSEURS DE CEM", "PROFESSEUR DE CEM", "PROFESSEURS DES CEM",
         "ADMINISTRATEURS CIVILS", "ATTACHES D'ADMINISTRATION",
         "JURISTES NF", "JURISTES CONSEILS", "STATISTICIEN NF", "STATISTICIENS NF",
@@ -121,13 +101,11 @@ def extraire_infos_acte(acte: str) -> dict:
         "MAITRES CONTRACTUELS", "MAÎTRES CONTRACTUELS",
         "SPECIALISTES FONCTION PUBLIQUE", "CONSEILLERS JURIDIQUES",
     ]
-    if not infos["corps"]:
-        for corps_ref in corps_cibles:
-            if corps_ref in texte_normalise:
-                infos["corps"] = corps_ref
-                break
+    for corps_ref in corps_cibles:
+        if corps_ref in texte_normalise:
+            infos["corps"] = corps_ref
+            break
 
-    # 4c) Dernier repli : regex générique autour de "hiérarchie/NF/REF/matricule/née"
     if not infos["corps"]:
         m_corps = re.search(
             r'([A-ZÉÈ][A-ZÉÈ\s\-]{3,40}?)\s+(?:hiérarchie\b|NF\b|REF\b|matricule\b|née\b)',
@@ -231,10 +209,42 @@ def verifier_points_abc(acte_text: str) -> dict:
 
 
 def detecter_type_acte(acte_text: str) -> str:
-    """Détecte le type d'acte : retraite / avancement / autre."""
+    """Détecte le type d'acte : retraite (fonctionnaire uniquement) /
+    avancement / autre.
+
+    La distinction fonctionnaire / non-fonctionnaire se base EN PRIORITÉ
+    sur les références légales obligatoires citées dans l'acte (RÈGLE V-01
+    de la base de connaissance métier) :
+      - Non-fonctionnaire (NF) : Loi n°97-17 (Code du travail) et/ou
+        Décret n°74-347
+      - Fonctionnaire : Loi n°61-33 (statut général des fonctionnaires)
+
+    C'est plus fiable qu'une simple recherche du mot "fonctionnaire", qui
+    apparaît aussi à l'intérieur de "non fonctionnaire". Les mots-clés
+    textuels ne servent plus que de repli, si aucune des deux références
+    légales n'est trouvée dans le texte.
+
+    Important : un acte de retraite pour un NON-fonctionnaire ne doit PAS
+    être classé "retraite_fonctionnaire" (circuit à 13 étapes avec tampon
+    DP) — il doit tomber sur le circuit "autre" (12 étapes, sans DP)."""
     texte_normalise = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
 
-    if "retraite" in texte_normalise and ("fonctionnaire" in texte_normalise or "61-33" in texte_normalise):
+    est_retraite = "retraite" in texte_normalise
+
+    cite_loi_non_fonctionnaire = "97-17" in texte_normalise or "74-347" in texte_normalise
+    cite_loi_fonctionnaire = "61-33" in texte_normalise
+
+    if cite_loi_fonctionnaire and not cite_loi_non_fonctionnaire:
+        est_fonctionnaire = True
+    elif cite_loi_non_fonctionnaire and not cite_loi_fonctionnaire:
+        est_fonctionnaire = False
+    else:
+        # Repli sur les mots-clés textuels si aucune référence légale
+        # claire (ou les deux à la fois, cas ambigu) n'a été trouvée.
+        est_non_fonctionnaire_mot = "non fonctionnaire" in texte_normalise or "non-fonctionnaire" in texte_normalise
+        est_fonctionnaire = "fonctionnaire" in texte_normalise and not est_non_fonctionnaire_mot
+
+    if est_retraite and est_fonctionnaire:
         return "retraite_fonctionnaire"
     if "avancement" in texte_normalise and "echelon" in texte_normalise:
         return "avancement_echelon"

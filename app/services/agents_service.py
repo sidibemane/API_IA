@@ -77,10 +77,10 @@ def recharger_base_agents():
 #  2. EXTRACTION DE L'IDENTITÉ DEPUIS LE TEXTE DE L'ACTE
 # ═══════════════════════════════════════════════════════════
 
-# Format canonique "615987B" (6 chiffres + 1 lettre), mais aussi les
-# formats réels observés sur les actes officiels avec séparateurs :
-# "687.450/F", "687 450 F", "687-450F", etc. Le groupe capturé garde la
-# ponctuation d'origine ; il est nettoyé ensuite par _normaliser_matricule.
+# ⚠️ CORRECTIF BUG 4 : format canonique "615987B" (6 chiffres + 1 lettre),
+# mais aussi les formats réels observés sur les actes officiels avec
+# séparateurs : "687.450/F", "687 450 F", "687-450F", etc. Le groupe capturé
+# garde la ponctuation d'origine ; elle est nettoyée par _normaliser_matricule.
 _RE_MATRICULE = re.compile(r"\b(\d{3}\s?[.\-]?\s?\d{3}\s?[/\-]?\s?[A-Z])\b")
 
 
@@ -101,9 +101,10 @@ _RE_NOM_TABLEAU = re.compile(
 _RE_DATE_NAISSANCE = re.compile(
     r"n[ée]\(?e?\)?\s+le\s+(\d{1,2}\s*[/\-.]\s*\d{1,2}\s*[/\-.]\s*\d{2,4})", re.IGNORECASE
 )
-# "Mle" est l'abréviation la plus courante sur les actes réels (ex: "Mle 687.450/F"),
-# à côté de "matricule" en toutes lettres — les deux doivent être reconnus et retirés
-# de la fenêtre de recherche du nom, sinon le nom/prénom juste avant n'est pas capté.
+# ⚠️ CORRECTIF (bonus) : "Mle" est l'abréviation la plus courante sur les
+# actes réels (ex: "Mle 687.450/F"), à côté de "matricule" en toutes lettres
+# — les deux doivent être reconnus et retirés de la fenêtre de recherche du
+# nom, sinon le nom/prénom juste avant le matricule n'est pas capté.
 _RE_PREFIXE_MATRICULE = re.compile(
     r"(?:matricule\s*(?:de\s*solde)?|mle)\s*n?°?\s*:?\s*$", re.IGNORECASE
 )
@@ -394,11 +395,13 @@ def get_delai_reglementaire_v2(acte_text: str, statut: str, corps_texte_extrait:
     """Priorité à la table corps_classe_echelon.csv (source de vérité).
     Repli sur get_delai_reglementaire() (règles générales) si le corps
     n'y figure pas — dans ce cas confirme_par_table=False."""
-    # Priorité au corps déjà extrait précisément par extraire_infos_acte
-    # (ex: corps de destination "dans le corps des Instituteurs" repéré par
-    # contexte). Ce texte est court et ciblé, donc plus fiable que la
-    # recherche globale sur tout l'acte, qui peut matcher le mauvais corps
-    # quand plusieurs corps (départ/arrivée) sont cités dans le même acte.
+    # ⚠️ CORRECTIF BUG 2 : priorité au corps déjà extrait précisément par
+    # extraire_infos_acte (ex: corps de destination "dans le corps des
+    # Instituteurs" repéré par contexte). Ce texte est court et ciblé, donc
+    # plus fiable que la recherche globale sur tout l'acte, qui peut matcher
+    # le mauvais corps quand plusieurs corps (départ/arrivée) sont cités
+    # dans le même acte. (Avant : acte_text était cherché EN PREMIER, ce qui
+    # rendait ce repli inutile puisqu'il trouvait toujours quelque chose.)
     cps_code = detecter_corps_depuis_texte(corps_texte_extrait or "", statut) or detecter_corps_depuis_texte(acte_text, statut)
 
     if cps_code is not None:
@@ -439,6 +442,9 @@ def extraire_progression_grade(bloc_texte: str):
     return list(zip(grades, dates))
 
 
+# ⚠️ CORRECTIF BUG 3 : signaux qui indiquent qu'un acte contient RÉELLEMENT
+# un tableau de progression grade/échelon (en-têtes typiques observés sur
+# les actes réels).
 _RE_HEADER_TABLEAU_AVANCEMENT = re.compile(
     r"ANCIENNE\s+SITUATION|NOUVELLE\s+SITUATION|GRADE\s+ET\s+ECHELON|TABLEAU\s+D['\u2019]AVANCEMENT",
     re.IGNORECASE,
@@ -447,28 +453,16 @@ _RE_HEADER_TABLEAU_AVANCEMENT = re.compile(
 
 def _acte_contient_tableau_avancement(acte_text: str) -> bool:
     """Tous les actes n'ont pas de tableau de progression grade/échelon
-    (ex: retraite, titularisation simple, décision de reclassement sans
-    évolution, certains actes 'autre'). On ne doit tenter/afficher la
-    vérification des délais d'avancement QUE si un tel tableau existe
-    RÉELLEMENT dans l'acte — sinon on ne fait rien (pas de vérification,
-    pas d'anomalie 'non vérifiable').
-
-    Deux signaux fiables seulement :
-    1) en-têtes explicites de tableau ("Ancienne situation", "Grade et
-       échelon", etc.) ;
-    2) l'acte est explicitement un acte d'avancement d'échelon (mots
-       "avancement" + "échelon" présents, cf. detecter_type_acte).
-
-    ⚠️ Aucun repli "au moins 2 motifs grade+date trouvés n'importe où dans
-    tout le texte" : ce repli était trop permissif et déclenchait de
-    fausses détections sur des actes qui n'ont aucun tableau (ex: dates de
-    VU/décrets, mentions isolées de grade dans le corps du texte),
-    provoquant à tort une anomalie DELAI_NON_VERIFIABLE."""
+    (ex: retraite, titularisation simple, certains actes 'autre'). On ne
+    doit tenter/afficher la vérification des délais d'avancement QUE si un
+    tel tableau existe réellement dans l'acte — sinon on ne fait rien
+    (pas de vérification, pas d'anomalie 'non vérifiable')."""
     texte_norm = unicodedata.normalize("NFKD", acte_text).encode("ascii", "ignore").decode("ascii")
     if _RE_HEADER_TABLEAU_AVANCEMENT.search(texte_norm):
         return True
-    from app.services.regles_service import detecter_type_acte  # import différé (anti-cycle)
-    return detecter_type_acte(acte_text) == "avancement_echelon"
+    # Repli : au moins une vraie séquence grade+date exploitable quelque
+    # part dans le document (signal fort qu'un tableau de progression existe).
+    return extraire_progression_grade(acte_text) is not None
 
 
 def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, hierarchie: str, corps: str, etape: int, profil: str):
