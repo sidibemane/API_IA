@@ -161,8 +161,8 @@ class MoteurValidationGIRAFE:
         self.cache_vision[empreinte] = resultat
         return resultat
 
-    def initialiser_workflow(self, acte_text: str) -> dict:
-        type_str = detecter_type_acte(acte_text)
+    def initialiser_workflow(self, acte_text: str, nature: str = None, type_acte=None) -> dict:
+        type_str = detecter_type_acte(acte_text, nature, type_acte)
         self.type_acte_detecte = TypeActe(type_str)
         self.workflow_actuel = WORKFLOWS_CONFIG[self.type_acte_detecte]
         return {
