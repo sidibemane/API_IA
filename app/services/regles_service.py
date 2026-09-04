@@ -1,12 +1,89 @@
 """Service de vérification des règles métier des actes RH."""
 
+import os
 import re
 import unicodedata
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 
 SIGNATAIRE_OFFICIEL = "LE MINISTRE DE LA FONCTION PUBLIQUE, DU TRAVAIL ET DE LA REFORME DU SERVICE PUBLIC,"
+
+
+# ═══════════════════════════════════════════════════════════
+#  TABLE DE PARAMÉTRAGE OFFICIELLE type_acte → circuit (GIRAFE)
+#
+#  Fichier : parametrage_type_acte_workflow.csv, colonnes :
+#    - nature      : "ARRETE", "DECISION", "DECIDE" (nature juridique de l'acte)
+#    - type_acte   : code numérique interne GIRAFE identifiant précisément
+#                    le type d'acte (ex: 5, 191, 198...)
+#    - ref_engine  : le circuit à appliquer, un des 3 codes suivants :
+#        APAE = circuit COURT de l'avancement d'échelon (9 étapes)
+#        APAG = circuit LONG ("autre" type d'acte — 12 étapes)
+#        RET  = circuit de la RETRAITE fonctionnaire (13 étapes)
+#
+#  Quand GIRAFE fournit le couple (nature, type_acte) à l'appel de l'API,
+#  on consulte CETTE table directement — 100% fiable, car basée sur le
+#  vrai référentiel GIRAFE. La détection par mots-clés dans le texte de
+#  l'acte (plus bas dans ce fichier) ne sert plus que de REPLI, pour les
+#  cas où (nature, type_acte) n'est pas fourni (ex: tests via le dashboard
+#  sans passer par GIRAFE).
+# ═══════════════════════════════════════════════════════════
+
+_REF_ENGINE_VERS_TYPE_ACTE = {
+    "APAE": "avancement_echelon",
+    "APAG": "autre",
+    "RET": "retraite_fonctionnaire",
+}
+
+_PARAMETRAGE_WORKFLOW_INDEX: dict = {}  # (nature_normalisee, type_acte_int) -> "avancement_echelon" / "autre" / "retraite_fonctionnaire"
+
+
+def _charger_parametrage_workflow():
+    """Charge parametrage_type_acte_workflow.csv en mémoire, une seule
+    fois au démarrage. Si le fichier est absent, on continue sans lui —
+    la détection retombe alors entièrement sur les mots-clés (repli)."""
+    global _PARAMETRAGE_WORKFLOW_INDEX
+    try:
+        chemin = os.path.join(os.getenv("DATA_DIR", "./app/data"), "parametrage_type_acte_workflow.csv")
+        df = pd.read_csv(chemin)
+        index = {}
+        for _, ligne in df.iterrows():
+            nature_norm = str(ligne["nature"]).strip().upper()
+            try:
+                type_acte_int = int(ligne["type_acte"])
+            except (TypeError, ValueError):
+                continue
+            ref_engine = str(ligne["ref_engine"]).strip().upper()
+            type_circuit = _REF_ENGINE_VERS_TYPE_ACTE.get(ref_engine)
+            if type_circuit:
+                index[(nature_norm, type_acte_int)] = type_circuit
+        _PARAMETRAGE_WORKFLOW_INDEX = index
+        logger.info(f"✅ Paramétrage type_acte → circuit chargé : {len(index)} entrées")
+    except Exception as e:
+        logger.warning(f"⚠️ Paramétrage type_acte → circuit non chargé ({e}) — repli sur les mots-clés uniquement.")
+        _PARAMETRAGE_WORKFLOW_INDEX = {}
+
+
+_charger_parametrage_workflow()
+
+
+def detecter_type_acte_par_parametrage(nature: str, type_acte) -> str:
+    """Cherche le circuit applicable dans la VRAIE table de paramétrage
+    GIRAFE, à partir du couple (nature, type_acte). Retourne None si le
+    couple n'est pas fourni ou n'est pas trouvé dans la table — dans ce
+    cas, l'appelant doit se rabattre sur la détection par mots-clés
+    (detecter_type_acte, plus bas)."""
+    if not nature or type_acte is None:
+        return None
+    try:
+        type_acte_int = int(type_acte)
+    except (TypeError, ValueError):
+        return None
+    nature_norm = str(nature).strip().upper()
+    return _PARAMETRAGE_WORKFLOW_INDEX.get((nature_norm, type_acte_int))
 
 
 def calcul_delai_annees(d1: str, d2: str) -> int:
@@ -208,28 +285,56 @@ def verifier_points_abc(acte_text: str) -> dict:
     }
 
 
-def detecter_type_acte(acte_text: str) -> str:
-    """Détecte le type d'acte : retraite (fonctionnaire uniquement) /
-    avancement / autre.
+def detecter_type_acte(acte_text: str, nature: str = None, type_acte=None) -> str:
+    """Détecte le type d'acte (circuit à appliquer) : retraite
+    (fonctionnaire uniquement) / avancement_echelon / autre.
 
-    La distinction fonctionnaire / non-fonctionnaire se base EN PRIORITÉ
-    sur les références légales obligatoires citées dans l'acte (RÈGLE V-01
-    de la base de connaissance métier) :
+    PRIORITÉ 1 — table de paramétrage officielle : si GIRAFE fournit
+    'nature' (ARRETE/DECISION/DECIDE) et 'type_acte' (code numérique
+    interne), on consulte directement parametrage_type_acte_workflow.csv
+    — 100% fiable, basé sur le vrai référentiel GIRAFE, aucune ambiguïté
+    possible contrairement à une recherche de mots-clés.
+
+    PRIORITÉ 2 — repli par mots-clés : utilisé uniquement si (nature,
+    type_acte) n'est pas fourni, ou si le couple n'existe pas dans la
+    table (ex: tests via le dashboard, sans passer par GIRAFE).
+
+    La distinction fonctionnaire / non-fonctionnaire (pour le repli
+    uniquement) se base EN PRIORITÉ sur les références légales
+    obligatoires citées dans l'acte (RÈGLE V-01 de la base de
+    connaissance métier) :
       - Non-fonctionnaire (NF) : Loi n°97-17 (Code du travail) et/ou
         Décret n°74-347
       - Fonctionnaire : Loi n°61-33 (statut général des fonctionnaires)
 
     C'est plus fiable qu'une simple recherche du mot "fonctionnaire", qui
     apparaît aussi à l'intérieur de "non fonctionnaire". Les mots-clés
-    textuels ne servent plus que de repli, si aucune des deux références
-    légales n'est trouvée dans le texte.
+    textuels ne servent qu'en tout dernier recours, si aucune des deux
+    références légales n'est trouvée dans le texte.
 
     Important : un acte de retraite pour un NON-fonctionnaire ne doit PAS
     être classé "retraite_fonctionnaire" (circuit à 13 étapes avec tampon
-    DP) — il doit tomber sur le circuit "autre" (12 étapes, sans DP)."""
+    DP) — il doit tomber sur le circuit "autre" (12 étapes, sans DP).
+
+    Important (2) : la détection par mots-clés s'ancre sur la vraie ligne
+    "Objet :" de l'acte, PAS sur tout le corps du texte. Un acte de
+    régularisation peut très bien mentionner "l'avancement de grade et
+    d'échelon" dans une phrase administrative sans que ce soit lui-même
+    un acte d'avancement — chercher ces mots dans tout le texte le
+    classerait alors, à tort, dans le circuit "avancement_echelon"."""
+
+    # ── PRIORITÉ 1 : table de paramétrage officielle ──
+    type_via_parametrage = detecter_type_acte_par_parametrage(nature, type_acte)
+    if type_via_parametrage:
+        return type_via_parametrage
+
+    # ── PRIORITÉ 2 : repli par mots-clés (nature/type_acte absent(s) ──
     texte_normalise = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
 
-    est_retraite = "retraite" in texte_normalise
+    m_objet = re.search(r"objet\s*:?\s*(.{0,150})", texte_normalise)
+    objet = m_objet.group(1) if m_objet else texte_normalise[:200]
+
+    est_retraite = "retraite" in objet
 
     cite_loi_non_fonctionnaire = "97-17" in texte_normalise or "74-347" in texte_normalise
     cite_loi_fonctionnaire = "61-33" in texte_normalise
@@ -246,6 +351,6 @@ def detecter_type_acte(acte_text: str) -> str:
 
     if est_retraite and est_fonctionnaire:
         return "retraite_fonctionnaire"
-    if "avancement" in texte_normalise and "echelon" in texte_normalise:
+    if "avancement" in objet and "echelon" in objet:
         return "avancement_echelon"
     return "autre"

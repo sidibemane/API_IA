@@ -1,3 +1,16 @@
+"""
+Service Agents — vérification d'identité (matricule/nom/prénom/date de
+naissance) contre la base du personnel, et vérification des délais
+réglementaires d'avancement grade/échelon via les tables de référence
+(corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
+
+Ce module était vide dans l'API déployée : toute cette logique existait
+dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
+ce qui explique l'absence de vérification matricule/nom/prénom et de
+calcul de délai d'avancement dans les résultats de l'API.
+"""
+
+import difflib
 import json
 import logging
 import os
@@ -77,21 +90,7 @@ def recharger_base_agents():
 #  2. EXTRACTION DE L'IDENTITÉ DEPUIS LE TEXTE DE L'ACTE
 # ═══════════════════════════════════════════════════════════
 
-# ⚠️ CORRECTIF BUG 4 : format canonique "615987B" (6 chiffres + 1 lettre),
-# mais aussi les formats réels observés sur les actes officiels avec
-# séparateurs : "687.450/F", "687 450 F", "687-450F", etc. Le groupe capturé
-# garde la ponctuation d'origine ; elle est nettoyée par _normaliser_matricule.
-_RE_MATRICULE = re.compile(r"\b(\d{3}\s?[.\-]?\s?\d{3}\s?[/\-]?\s?[A-Z])\b")
-
-
-def _normaliser_matricule(matricule: str) -> str:
-    """Retire toute ponctuation/espace d'un matricule pour le ramener au
-    format canonique utilisé dans base_agents.json (ex: '687.450/F' -> '687450F')."""
-    if not matricule:
-        return ""
-    return re.sub(r"[.\-/\s]", "", str(matricule)).upper()
-
-
+_RE_MATRICULE = re.compile(r"\b(\d{6}[A-Z])\b")
 _RE_NOM_NARRATIF = re.compile(
     r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*,?\s*$"
 )
@@ -101,23 +100,17 @@ _RE_NOM_TABLEAU = re.compile(
 _RE_DATE_NAISSANCE = re.compile(
     r"n[ée]\(?e?\)?\s+le\s+(\d{1,2}\s*[/\-.]\s*\d{1,2}\s*[/\-.]\s*\d{2,4})", re.IGNORECASE
 )
-# ⚠️ CORRECTIF (bonus) : "Mle" est l'abréviation la plus courante sur les
-# actes réels (ex: "Mle 687.450/F"), à côté de "matricule" en toutes lettres
-# — les deux doivent être reconnus et retirés de la fenêtre de recherche du
-# nom, sinon le nom/prénom juste avant le matricule n'est pas capté.
-_RE_PREFIXE_MATRICULE = re.compile(
-    r"(?:matricule\s*(?:de\s*solde)?|mle)\s*n?°?\s*:?\s*$", re.IGNORECASE
-)
+_RE_PREFIXE_MATRICULE = re.compile(r"matricule\s*(?:de\s*solde)?\s*n?°?\s*:?\s*$", re.IGNORECASE)
 
 
 def extraire_identite_agent(acte_text: str) -> list:
-    """Repère chaque matricule dans l'acte et tente d'identifier le nom/prénom
-    juste avant, ainsi que la date de naissance à proximité. Retourne une
-    liste (un acte peut concerner plusieurs agents)."""
+    """Repère chaque matricule (6 chiffres + 1 lettre) dans l'acte et tente
+    d'identifier le nom/prénom juste avant, ainsi que la date de naissance
+    à proximité. Retourne une liste (un acte peut concerner plusieurs agents)."""
     agents = []
     matches = list(_RE_MATRICULE.finditer(acte_text))
     for i, m in enumerate(matches):
-        matricule = _normaliser_matricule(m.group(1))
+        matricule = m.group(1)
         fenetre_avant = acte_text[max(0, m.start() - 220):m.start()]
         fenetre_avant = _RE_PREFIXE_MATRICULE.sub("", fenetre_avant)
 
@@ -143,19 +136,127 @@ def extraire_identite_agent(acte_text: str) -> list:
     return agents
 
 
+_MOIS_FR = {
+    "janvier": 1, "fevrier": 2, "février": 2, "mars": 3, "avril": 4, "mai": 5, "juin": 6,
+    "juillet": 7, "aout": 8, "août": 8, "septembre": 9, "octobre": 10, "novembre": 11,
+    "decembre": 12, "décembre": 12,
+}
+_RE_DATE_NAISSANCE_LETTRES = re.compile(
+    r"\b(\d{1,2})(?:er)?\s+(" + "|".join(_MOIS_FR.keys()) + r")\s+(\d{4})\b", re.IGNORECASE
+)
+
+
+def _normaliser_date_lettres(jour: str, mois_texte: str, annee: str) -> str:
+    mois_num = _MOIS_FR.get(mois_texte.lower())
+    return f"{int(jour):02d}/{mois_num:02d}/{annee}" if mois_num else ""
+
+
+_RE_NOM_TABLEAU_ENGAGEMENT = re.compile(
+    r"((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,2})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*\n?\s*$"
+)
+
+
+_MOTS_CITATION_LEGALE = ("decret", "loi", "arrete", "instruction", "circulaire", "n°", "n ")
+
+
+def _est_citation_legale(texte: str, position_debut: int) -> bool:
+    """Vrai si la date trouvée à cette position est en fait la date d'un
+    décret/loi/arrêté cité en référence ('VU le décret n°2015-583 du 11
+    mai 2015...') — PAS une date de naissance. On regarde les ~50
+    caractères juste avant la date."""
+    contexte_avant = unicodedata.normalize(
+        "NFKD", texte[max(0, position_debut - 50):position_debut].lower()
+    ).encode("ascii", "ignore").decode("ascii")
+    return any(mot in contexte_avant for mot in _MOTS_CITATION_LEGALE)
+
+
+def _RE_DATE_NAISSANCE_TOUTES_FORMES(texte: str):
+    """Trouve les dates de naissance sous DEUX formes possibles :
+    - numérique avec ancrage 'né(e) le' (actes narratifs classiques)
+    - en toutes lettres, ex: '10 janvier 1999' (fréquent dans les tableaux
+      d'engagement de type 'Prénoms et noms | Date et lieu de naissance | ...')
+    Exclut les dates en lettres qui sont en réalité des citations légales
+    ('décret n°X du 11 mai 2015') — seul le format numérique est ancré sur
+    'né(e) le', donc pas de risque de confusion pour lui ; le format en
+    lettres, lui, n'a pas cet ancrage et doit donc être filtré.
+    Retourne une liste de (position_debut, position_fin, date_normalisee)."""
+    resultats = []
+    for m in _RE_DATE_NAISSANCE.finditer(texte):
+        resultats.append((m.start(), m.end(), m.group(1).strip()))
+    for m in _RE_DATE_NAISSANCE_LETTRES.finditer(texte):
+        if _est_citation_legale(texte, m.start()):
+            continue
+        date_norm = _normaliser_date_lettres(m.group(1), m.group(2), m.group(3))
+        if date_norm:
+            resultats.append((m.start(), m.end(), date_norm))
+    resultats.sort(key=lambda r: r[0])
+    return resultats
+
+
+_RE_NOM_AVANT_DATE_NAISSANCE = re.compile(
+    r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)"
+)
+
+
+def extraire_identite_par_date_naissance(acte_text: str) -> list:
+    """Repli utilisé quand AUCUN matricule n'est présent dans l'acte — cas
+    des actes d'ENGAGEMENT, NOMINATION ou RÉGULARISATION, où l'agent n'a
+    pas encore de matricule attribué. Dans ces actes, la date de naissance
+    sert d'identifiant fiable à la place — soit citée en texte narratif
+    ("Madame X, née le 03/07/1984"), soit dans un tableau ("Prénoms et
+    noms | Date et lieu de naissance | ..." avec la date en toutes
+    lettres, ex: "10 janvier 1999")."""
+    agents = []
+    for debut, fin, date_naissance in _RE_DATE_NAISSANCE_TOUTES_FORMES(acte_text):
+        fenetre_avant = acte_text[max(0, debut - 400):debut]
+
+        nom, prenom = None, None
+        occurrences_nom = list(_RE_NOM_AVANT_DATE_NAISSANCE.finditer(fenetre_avant))
+        if occurrences_nom:
+            m_nom = occurrences_nom[-1]
+            prenom = " ".join(m_nom.group(1).split())
+            nom = m_nom.group(2).strip()
+        else:
+            # Repli tableau : pas de "Madame/Monsieur", juste
+            # "Prénom(s)\nNOM" juste avant la date (ligne de tableau).
+            m_nom = _RE_NOM_TABLEAU_ENGAGEMENT.search(fenetre_avant[-60:])
+            if m_nom:
+                prenom = " ".join(m_nom.group(1).split())
+                nom = m_nom.group(2).strip()
+
+        if not nom:
+            continue
+
+        # Évite les doublons : la même personne est souvent citée dans
+        # plusieurs articles du même acte (identité + majoration
+        # d'ancienneté + régularisation de grade, par exemple).
+        deja_present = any(a["nom"] == nom and a["date_naissance"] == date_naissance for a in agents)
+        if not deja_present:
+            agents.append({
+                "matricule": None, "nom": nom, "prenom": prenom,
+                "date_naissance": date_naissance, "bloc_progression": "",
+            })
+    return agents
+
+
 # ═══════════════════════════════════════════════════════════
 #  3. VÉRIFICATION IDENTITÉ ACTE <-> BASE AGENTS
 # ═══════════════════════════════════════════════════════════
 
-def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_externes: list = None):
+def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_externes: list = None, corps_acte: str = None):
     """Extrait le/les agent(s) de l'acte, les recherche par matricule, puis
-    compare nom / prénom / date de naissance.
+    compare nom / prénom / date de naissance / corps.
 
     agents_externes : si fourni (liste de dicts au format de base_agents.json,
     envoyée par GIRAFE à chaque appel), c'est CETTE liste qui sert de source
     de vérité — pas le fichier local base_agents.json. Le fichier local ne
     sert que de repli pour les tests autonomes (dashboard), quand aucune
     donnée n'est fournie par l'appelant.
+
+    corps_acte : le corps déjà extrait du TEXTE de l'acte par
+    regles_service.extraire_infos_acte() — comparé au corps déclaré dans
+    agent_info/base_agents.json, pour détecter une incohérence (ex: l'acte
+    dit "Professeurs" mais la fiche agent dit "Médecins").
 
     Retourne (anomalies: list[dict], checks: dict) — même format que
     verifier_points_abc, pour fusion directe dans workflow_service."""
@@ -178,16 +279,24 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
         return anomalies, checks
 
     agents_acte = extraire_identite_agent(acte_text)
+    mode_identification = "matricule"
+
+    if not agents_acte:
+        # Repli : actes d'ENGAGEMENT / NOMINATION / RÉGULARISATION, où
+        # l'agent n'a pas encore de matricule attribué — on identifie
+        # alors par date de naissance à la place.
+        agents_acte = extraire_identite_par_date_naissance(acte_text)
+        mode_identification = "date_naissance"
 
     if not agents_acte:
         code = "MATRICULE_NON_TROUVE_DANS_ACTE"
-        checks["Identification agent(s)"] = "❌ AUCUN MATRICULE TROUVÉ DANS L'ACTE"
+        checks["Identification agent(s)"] = "❌ AUCUN MATRICULE NI DATE DE NAISSANCE EXPLOITABLE TROUVÉ DANS L'ACTE"
         anomalies.append({
             "code": code,
-            "description": "Aucun matricule n'a pu être identifié dans le texte de l'acte.",
+            "description": "Ni matricule ni date de naissance n'ont pu être identifiés dans le texte de l'acte.",
             "criticite": determiner_criticite(code).value,
             "profil_concerne": profil, "etape": etape,
-            "recommandation": "Vérifier que le(s) matricule(s) de(s) agent(s) figure(nt) bien et lisiblement dans l'acte.",
+            "recommandation": "Vérifier que le matricule ou, à défaut, la date de naissance de l'agent figure bien et lisiblement dans l'acte.",
         })
         return anomalies, checks
 
@@ -195,30 +304,58 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
 
     for idx, identite_acte in enumerate(agents_acte, start=1):
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
-        cle = _normaliser_texte_identite(identite_acte["matricule"])
-        agent_ref = index_a_utiliser.get(cle)
+
+        if mode_identification == "matricule":
+            cle = _normaliser_texte_identite(identite_acte["matricule"])
+            agent_ref = index_a_utiliser.get(cle)
+        else:
+            # Recherche par date de naissance (+ nom si disponible, pour
+            # départager en cas d'homonymie de date) — pas d'index
+            # pré-construit, mais la liste d'agents fournie par appel
+            # reste courte, une recherche linéaire suffit.
+            date_norm_acte = _normaliser_texte_identite(identite_acte.get("date_naissance"))
+            agent_ref = None
+            candidats = [
+                a for a in base_a_utiliser
+                if _normaliser_texte_identite(a.get("date_naissance")) == date_norm_acte
+            ]
+            if len(candidats) == 1:
+                agent_ref = candidats[0]
+            elif len(candidats) > 1 and identite_acte.get("nom"):
+                nom_norm_acte = _normaliser_texte_identite(identite_acte["nom"])
+                for c in candidats:
+                    if _normaliser_texte_identite(c.get("nom")) == nom_norm_acte:
+                        agent_ref = c
+                        break
 
         if agent_ref is None:
             code = "AGENT_INCONNU_BASE"
-            checks[f"{prefixe} — Identification"] = f"❌ MATRICULE INCONNU DANS LA BASE ({identite_acte['matricule']})"
+            identifiant_manquant = (
+                f"matricule {identite_acte['matricule']}" if mode_identification == "matricule"
+                else f"date de naissance {identite_acte.get('date_naissance')} ({identite_acte.get('nom')} {identite_acte.get('prenom')})"
+            )
+            checks[f"{prefixe} — Identification"] = f"❌ AGENT INCONNU DANS LA BASE ({identifiant_manquant})"
             anomalies.append({
                 "code": code,
-                "description": f"Le matricule '{identite_acte['matricule']}' cité dans l'acte n'existe pas dans la base des agents.",
+                "description": f"L'agent identifié par {identifiant_manquant} n'existe pas dans la base des agents.",
                 "criticite": determiner_criticite(code).value,
                 "profil_concerne": profil, "etape": etape,
-                "recommandation": "Vérifier le matricule (erreur de saisie possible) ou signaler un agent non répertorié.",
+                "recommandation": "Vérifier l'identifiant (erreur de saisie possible) ou signaler un agent non répertorié.",
             })
             continue
 
-        checks[f"{prefixe} — Identification"] = f"✅ TROUVÉ — {agent_ref['nom']} {agent_ref['prenom']} (matricule {agent_ref['matricule']})"
-        checks[f"{prefixe} — Matricule (acte vs base)"] = f"✅ CONFORME — '{identite_acte['matricule']}' trouvé dans la base des agents"
+        checks[f"{prefixe} — Identification"] = f"✅ TROUVÉ — {agent_ref['nom']} {agent_ref['prenom']} (matricule {agent_ref.get('matricule') or 'n/c — identifié par date de naissance'})"
+        if mode_identification == "matricule":
+            checks[f"{prefixe} — Matricule (acte vs base)"] = f"✅ CONFORME — '{identite_acte['matricule']}' trouvé dans la base des agents"
+        else:
+            checks[f"{prefixe} — Date de naissance (acte vs base)"] = f"✅ CONFORME — '{identite_acte.get('date_naissance')}' trouvée dans la base des agents"
 
         if identite_acte["nom"] and _normaliser_texte_identite(identite_acte["nom"]) != _normaliser_texte_identite(agent_ref.get("nom")):
             code = "IDENTITE_NOM_INCORRECT"
             checks[f"{prefixe} — Nom (acte vs base)"] = f"❌ Acte: '{identite_acte['nom']}' / Base: '{agent_ref.get('nom')}'"
             anomalies.append({
                 "code": code,
-                "description": f"Nom incohérent : acte='{identite_acte['nom']}', base='{agent_ref.get('nom')}' pour le matricule {agent_ref['matricule']}.",
+                "description": f"Nom incohérent : acte='{identite_acte['nom']}', base='{agent_ref.get('nom')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
                 "criticite": determiner_criticite(code).value,
                 "profil_concerne": profil, "etape": etape,
                 "recommandation": "Vérifier l'orthographe du nom ou l'exactitude du matricule utilisé.",
@@ -231,7 +368,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
             checks[f"{prefixe} — Prénom (acte vs base)"] = f"❌ Acte: '{identite_acte['prenom']}' / Base: '{agent_ref.get('prenom')}'"
             anomalies.append({
                 "code": code,
-                "description": f"Prénom incohérent : acte='{identite_acte['prenom']}', base='{agent_ref.get('prenom')}' pour le matricule {agent_ref['matricule']}.",
+                "description": f"Prénom incohérent : acte='{identite_acte['prenom']}', base='{agent_ref.get('prenom')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
                 "criticite": determiner_criticite(code).value,
                 "profil_concerne": profil, "etape": etape,
                 "recommandation": "Vérifier l'orthographe du prénom ou l'exactitude du matricule utilisé.",
@@ -247,7 +384,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                 checks[f"{prefixe} — Date de naissance (acte vs base)"] = f"❌ Acte: '{identite_acte['date_naissance']}' / Base: '{agent_ref.get('date_naissance')}'"
                 anomalies.append({
                     "code": code,
-                    "description": f"Date de naissance incohérente : acte='{identite_acte['date_naissance']}', base='{agent_ref.get('date_naissance')}' pour le matricule {agent_ref['matricule']}.",
+                    "description": f"Date de naissance incohérente : acte='{identite_acte['date_naissance']}', base='{agent_ref.get('date_naissance')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
                     "criticite": determiner_criticite(code).value,
                     "profil_concerne": profil, "etape": etape,
                     "recommandation": "Vérifier la date de naissance ou l'exactitude du matricule utilisé.",
@@ -256,7 +393,103 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                 checks[f"{prefixe} — Date de naissance (acte vs base)"] = "✅ CONFORME"
 
         if agent_ref.get("corps"):
-            checks[f"{prefixe} — Corps (base)"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'})"
+            if corps_acte:
+                corps_acte_norm = _normaliser_texte_identite(corps_acte)
+                corps_base_norm = _normaliser_texte_identite(agent_ref["corps"])
+                # Comparaison tolérante : correspondance exacte, inclusion
+                # mutuelle (ex: base a un suffixe "NF REF" en plus), ou
+                # forte similarité — pour absorber les petites variations
+                # de formulation sans générer de faux rejets.
+                ratio = difflib.SequenceMatcher(None, corps_acte_norm, corps_base_norm).ratio()
+                correspond = (
+                    corps_acte_norm == corps_base_norm
+                    or corps_acte_norm in corps_base_norm
+                    or corps_base_norm in corps_acte_norm
+                    or ratio >= 0.6
+                )
+                if correspond:
+                    checks[f"{prefixe} — Corps (acte vs base)"] = f"✅ CONFORME — {agent_ref['corps']}"
+                else:
+                    code = "IDENTITE_CORPS_INCORRECT"
+                    checks[f"{prefixe} — Corps (acte vs base)"] = f"❌ Acte: '{corps_acte}' / Base: '{agent_ref['corps']}'"
+                    anomalies.append({
+                        "code": code,
+                        "description": f"Corps incohérent : acte='{corps_acte}', base='{agent_ref['corps']}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
+                        "criticite": determiner_criticite(code).value,
+                        "profil_concerne": profil, "etape": etape,
+                        "recommandation": "Vérifier le corps mentionné dans l'acte ou l'exactitude du matricule utilisé.",
+                    })
+            else:
+                checks[f"{prefixe} — Corps (base)"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'}) — corps non détecté dans le texte de l'acte, comparaison impossible"
+
+    return anomalies, checks
+
+
+def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
+    """Vérifie que les références légales (loi/décret) citées dans l'acte
+    correspondent bien au VRAI statut (FONCT/NON_FONCT) du corps détecté,
+    selon la base de référence corps.csv — pas seulement à ce que le texte
+    de l'acte prétend lui-même. Conforme à la RÈGLE V-01 de la base de
+    connaissance métier :
+      - Fonctionnaire  → doit citer la Loi n°61-33
+      - Non-fonctionnaire → doit citer la Loi n°97-17 et/ou le Décret n°74-347
+    """
+    from app.services.workflow_service import determiner_criticite  # import différé (anti-cycle)
+
+    anomalies = []
+    checks = {}
+
+    if CORPS_DF is None:
+        return anomalies, checks
+
+    code_corps = detecter_corps_depuis_texte(acte_text)
+    if not code_corps:
+        return anomalies, checks
+
+    infos_corps = CPS_INFOS_PAR_CODE.get(code_corps, {})
+    type_brut = infos_corps.get("cps_typecorps_code") or ""
+    libelle_corps = infos_corps.get("cps_libelle", code_corps)
+
+    # La colonne cps_typecorps_code utilise plusieurs variantes selon les
+    # corps : "FONCT" / "NON_FONCT" pour la plupart, mais "ENS_FONCT" /
+    # "ENS_NON_FONCT" pour les corps de l'Enseignement (préfixe "ENS_").
+    # On se base sur la présence de "NON_FONCT" dans la valeur plutôt que
+    # sur une égalité stricte, pour couvrir toutes ces variantes.
+    if "NON_FONCT" in type_brut:
+        type_reel = "NON_FONCT"
+    elif "FONCT" in type_brut:
+        type_reel = "FONCT"
+    else:
+        return anomalies, checks  # donnée de référence vraiment absente/inattendue, on ne bloque pas
+
+    texte_norm = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
+    cite_loi_non_fonctionnaire = "97-17" in texte_norm or "74-347" in texte_norm
+    cite_loi_fonctionnaire = "61-33" in texte_norm
+
+    # On vérifie uniquement que LA LOI ATTENDUE pour ce corps est bien
+    # présente dans l'acte — peu importe si d'autres références légales
+    # apparaissent aussi (un agent peut légitimement ajouter des décrets
+    # spécifiques à son corps, non répertoriés dans notre base ; ce n'est
+    # pas une erreur).
+    loi_attendue_presente = cite_loi_fonctionnaire if type_reel == "FONCT" else cite_loi_non_fonctionnaire
+
+    if loi_attendue_presente:
+        attendu = "Loi n°61-33 (fonctionnaires)" if type_reel == "FONCT" else "Loi n°97-17 / Décret n°74-347 (non-fonctionnaires)"
+        checks["Visa (loi/décret) vs corps"] = f"✅ CONFORME — {libelle_corps} ({type_reel}), {attendu} bien présent(e)"
+    else:
+        code = "VISA_INCOHERENT"
+        attendu = "la Loi n°61-33 (fonctionnaires)" if type_reel == "FONCT" else "la Loi n°97-17 / le Décret n°74-347 (non-fonctionnaires)"
+        checks["Visa (loi/décret) vs corps"] = f"ℹ Corps '{libelle_corps}' ({type_reel}) — {attendu} non trouvée dans l'acte, à vérifier"
+        anomalies.append({
+            "code": code,
+            "description": (
+                f"Pour le corps '{libelle_corps}' ({type_reel}), la référence légale "
+                f"attendue ({attendu}) n'a pas été retrouvée dans le texte de l'acte."
+            ),
+            "criticite": determiner_criticite(code).value,
+            "profil_concerne": profil, "etape": etape,
+            "recommandation": "Vérifier que la référence légale attendue pour ce corps figure bien dans l'acte.",
+        })
 
     return anomalies, checks
 
@@ -366,9 +599,14 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
     meilleurs = [c for c in candidats if len(c[0]) == max_len]
     if len(meilleurs) == 1:
         return meilleurs[0][1]
-    type_attendu = "NON_FONCT" if statut == "NF" else "FONCT"
+    # "NON_FONCT" doit aussi matcher la variante "ENS_NON_FONCT" (corps de
+    # l'Enseignement) — d'où une recherche de sous-chaîne plutôt qu'une
+    # égalité stricte.
+    cherche_non_fonct = statut == "NF"
     for lib, code, typ in meilleurs:
-        if typ == type_attendu:
+        typ = typ or ""
+        est_non_fonct = "NON_FONCT" in typ
+        if est_non_fonct == cherche_non_fonct:
             return code
     return meilleurs[0][1]
 
@@ -395,14 +633,7 @@ def get_delai_reglementaire_v2(acte_text: str, statut: str, corps_texte_extrait:
     """Priorité à la table corps_classe_echelon.csv (source de vérité).
     Repli sur get_delai_reglementaire() (règles générales) si le corps
     n'y figure pas — dans ce cas confirme_par_table=False."""
-    # ⚠️ CORRECTIF BUG 2 : priorité au corps déjà extrait précisément par
-    # extraire_infos_acte (ex: corps de destination "dans le corps des
-    # Instituteurs" repéré par contexte). Ce texte est court et ciblé, donc
-    # plus fiable que la recherche globale sur tout l'acte, qui peut matcher
-    # le mauvais corps quand plusieurs corps (départ/arrivée) sont cités
-    # dans le même acte. (Avant : acte_text était cherché EN PREMIER, ce qui
-    # rendait ce repli inutile puisqu'il trouvait toujours quelque chose.)
-    cps_code = detecter_corps_depuis_texte(corps_texte_extrait or "", statut) or detecter_corps_depuis_texte(acte_text, statut)
+    cps_code = detecter_corps_depuis_texte(acte_text, statut) or detecter_corps_depuis_texte(corps_texte_extrait or "", statut)
 
     if cps_code is not None:
         parse = parser_grade_depart(grade_depart_label)
@@ -434,46 +665,47 @@ _RE_GRADE_PROGRESSION = re.compile(r"(?:\d+CL|PPL|HC)\s+\d+ECH|CEX", re.IGNORECA
 _RE_DATE_PROGRESSION = re.compile(r"\d{2}[./]\d{2}[./]\d{4}")
 
 
-def extraire_progression_grade(bloc_texte: str):
-    grades = [g.upper().replace("  ", " ").strip() for g in _RE_GRADE_PROGRESSION.findall(bloc_texte)]
-    dates = [d.replace(".", "/") for d in _RE_DATE_PROGRESSION.findall(bloc_texte)]
-    if len(grades) != len(dates) or len(grades) < 2:
-        return None
+def _extraire_paires_brutes(texte: str):
+    """Extrait toutes les paires (grade, date) trouvées dans le texte
+    donné, dans leur ordre d'apparition physique — sans jugement sur leur
+    cohérence."""
+    grades = [g.upper().replace("  ", " ").strip() for g in _RE_GRADE_PROGRESSION.findall(texte)]
+    dates = [d.replace(".", "/") for d in _RE_DATE_PROGRESSION.findall(texte)]
+    if len(grades) != len(dates):
+        return []
     return list(zip(grades, dates))
 
 
-# ⚠️ CORRECTIF BUG 3 : signaux qui indiquent qu'un acte contient RÉELLEMENT
-# un tableau de progression grade/échelon (en-têtes typiques observés sur
-# les actes réels).
-_RE_HEADER_TABLEAU_AVANCEMENT = re.compile(
-    r"ANCIENNE\s+SITUATION|NOUVELLE\s+SITUATION|GRADE\s+ET\s+ECHELON|TABLEAU\s+D['\u2019]AVANCEMENT",
-    re.IGNORECASE,
-)
+def _tronquer_a_la_premiere_incoherence(paires: list):
+    """Garde-fou : dans une vraie progression de carrière, les dates
+    avancent TOUJOURS dans le temps. Une date qui recule ou n'avance pas
+    est le signe fiable d'une confusion d'extraction (mélange entre deux
+    agents) — on tronque la séquence à ce point-là plutôt que de produire
+    des comparaisons absurdes en aval."""
+    if not paires:
+        return None
+    paires_valides = [paires[0]]
+    for grade, date in paires[1:]:
+        derniere_date = paires_valides[-1][1]
+        if calcul_delai_annees(derniere_date, date) <= 0:
+            break
+        paires_valides.append((grade, date))
+    return paires_valides
 
 
-def _acte_contient_tableau_avancement(acte_text: str) -> bool:
-    """Tous les actes n'ont pas de tableau de progression grade/échelon
-    (ex: retraite, titularisation simple, certains actes 'autre'). On ne
-    doit tenter/afficher la vérification des délais d'avancement QUE si un
-    tel tableau existe réellement dans l'acte — sinon on ne fait rien
-    (pas de vérification, pas d'anomalie 'non vérifiable')."""
-    texte_norm = unicodedata.normalize("NFKD", acte_text).encode("ascii", "ignore").decode("ascii")
-    if _RE_HEADER_TABLEAU_AVANCEMENT.search(texte_norm):
-        return True
-    # Repli : au moins une vraie séquence grade+date exploitable quelque
-    # part dans le document (signal fort qu'un tableau de progression existe).
-    return extraire_progression_grade(acte_text) is not None
+def extraire_progression_grade(bloc_texte: str):
+    """Conservé pour compatibilité — extraction + garde-fou sur UN bloc de
+    texte donné (utilisé pour les actes à un seul agent)."""
+    paires = _extraire_paires_brutes(bloc_texte)
+    if len(paires) < 2:
+        return None
+    return _tronquer_a_la_premiere_incoherence(paires)
 
 
 def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, hierarchie: str, corps: str, etape: int, profil: str):
     """Pour chaque agent, vérifie chaque étape de sa progression grade/échelon
     par rapport au délai réglementaire (table corps_classe_echelon.csv en
-    priorité, repli sur les règles générales sinon).
-
-    Ne s'applique QUE si l'acte contient effectivement un tableau de
-    progression grade/échelon. Les actes qui n'en ont pas (retraite,
-    titularisation simple, etc.) ne sont pas concernés par cette
-    vérification : on ne remonte alors aucun check ni aucune anomalie."""
+    priorité, repli sur les règles générales sinon)."""
     from app.services.workflow_service import determiner_criticite  # import différé (anti-cycle)
 
     anomalies = []
@@ -482,16 +714,43 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
     if not agents_acte:
         return anomalies, checks
 
-    if not _acte_contient_tableau_avancement(acte_text):
-        # Pas de tableau d'avancement dans cet acte : la vérification des
-        # délais ne s'applique pas. On ne signale aucune anomalie.
-        return anomalies, checks
-
     plusieurs = len(agents_acte) > 1
 
-    for idx, agent in enumerate(agents_acte, start=1):
+    # Détermine, pour chaque agent, sa liste de paires (grade, date) —
+    # deux stratégies selon le cas :
+    #
+    # 1) Acte à PLUSIEURS agents : le nom/matricule d'un agent peut
+    #    apparaître APRÈS ses propres données de progression dans le texte
+    #    extrait du PDF (mise en page en tableau, cellule de nom sur deux
+    #    lignes qui décale l'ordre de lecture) — chercher "après le
+    #    matricule" échoue alors pour certains agents. On extrait donc
+    #    TOUTES les paires du document en une fois, dans leur ordre
+    #    d'apparition physique, et on les répartit équitablement entre les
+    #    agents dans l'ordre où ILS apparaissent (même hypothèse validée
+    #    sur un vrai cas : chaque agent = un nombre égal de paires).
+    #
+    # 2) Acte à UN SEUL agent : on garde l'extraction par bloc individuel,
+    #    qui gère bien le cas d'un seul agent avec plusieurs échelons
+    #    successifs (chaînage complet dans l'ordre).
+    groupes_par_agent = []
+    if plusieurs:
+        toutes_paires = _extraire_paires_brutes(acte_text)
+        if toutes_paires and len(toutes_paires) % len(agents_acte) == 0:
+            par_agent = len(toutes_paires) // len(agents_acte)
+            for i in range(len(agents_acte)):
+                sous_groupe = toutes_paires[i * par_agent:(i + 1) * par_agent]
+                groupes_par_agent.append(_tronquer_a_la_premiere_incoherence(sous_groupe))
+        else:
+            # Répartition non régulière : repli sur l'extraction par bloc
+            # individuel (moins fiable ici, mais reste un filet de sécurité).
+            for agent in agents_acte:
+                groupes_par_agent.append(extraire_progression_grade(agent.get("bloc_progression", "")))
+    else:
+        for agent in agents_acte:
+            groupes_par_agent.append(extraire_progression_grade(agent.get("bloc_progression", "")))
+
+    for idx, (agent, etapes) in enumerate(zip(agents_acte, groupes_par_agent), start=1):
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
-        etapes = extraire_progression_grade(agent.get("bloc_progression", ""))
 
         if not etapes:
             code = "DELAI_NON_VERIFIABLE"
@@ -512,6 +771,29 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
             date_apres = etapes[i][1]
 
             delai_constate = calcul_delai_annees(date_avant, date_apres)
+
+            # Garde-fou : un délai négatif ou nul est impossible dans une
+            # vraie progression de carrière — c'est le signe que le tableau
+            # a été mal extrait (dates/grades de deux agents mélangés), pas
+            # une vraie violation de règle métier. On le signale comme "à
+            # vérifier manuellement" plutôt que comme une fausse anomalie.
+            if delai_constate <= 0:
+                code = "DELAI_NON_VERIFIABLE"
+                checks[libelle_etape] = f"⚠ Délai constaté incohérent ({delai_constate} an(s)) — extraction du tableau probablement erronée, à vérifier manuellement"
+                anomalies.append({
+                    "code": code,
+                    "description": (
+                        f"Délai incohérent (négatif ou nul) détecté pour l'agent "
+                        f"{agent.get('nom') or ''} (matricule {agent.get('matricule')}) : "
+                        f"{grade_avant} ({date_avant}) → {grade_apres} ({date_apres}). "
+                        f"Cela indique probablement une erreur d'extraction du tableau, pas une vraie anomalie."
+                    ),
+                    "criticite": determiner_criticite(code).value,
+                    "profil_concerne": profil, "etape": etape,
+                    "recommandation": "Vérifier manuellement le tableau de progression de cet agent dans l'acte original.",
+                })
+                continue
+
             delai_reg, regle_appliquee, confirme_par_table = get_delai_reglementaire_v2(
                 acte_text, statut, corps, grade_avant
             )

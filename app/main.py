@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(get_settings().logs_dir, exist_ok=True)
 
     mode = get_settings().llm_mode
-    logger.info(f" API prête ! Mode LLM : {mode}")
+    logger.info(f"✅ API prête ! Mode LLM : {mode}")
     yield
 
 
@@ -63,20 +63,40 @@ def poser_question_rag(req: RAGQuestionRequest):
 
 
 @app.post("/workflow/init")
-def initialiser_workflow_api(acte_id: str = Form(...), acte_text: str = Form(...)):
+def initialiser_workflow_api(
+    acte_id: str = Form(...),
+    acte_text: str = Form(...),
+    nature: str = Form(
+        None,
+        description="ARRETE / DECISION / DECIDE — avec 'type_acte', permet une détection 100% fiable du circuit via la table de paramétrage officielle GIRAFE, au lieu du repli par mots-clés.",
+    ),
+    type_acte: int = Form(None, description="Code numérique interne GIRAFE identifiant précisément le type d'acte (voir parametrage_type_acte_workflow.csv)."),
+):
     from app.services.workflow_service import get_moteur
     moteur = get_moteur(acte_id)
-    return moteur.initialiser_workflow(acte_text)
+    return moteur.initialiser_workflow(acte_text, nature, type_acte)
 
 
 async def _traiter_une_verification(
-    etape: int, acte_id: str, acte_text: str, fichier: UploadFile, agent_info: str,
+    etape, acte_id: str, acte_text: str, fichier: UploadFile, agent_info: str, profil: str = None,
+    nature: str = None, type_acte=None,
 ) -> dict:
     """Logique de vérification pour UN acte, réutilisée par l'endpoint
     unitaire (/workflow/valider) et l'endpoint en masse
     (/workflow/valider-masse). Chaque acte_id a son propre espace isolé
     (voir workflow_service.get_moteur), donc cette fonction peut être
-    appelée pour plusieurs actes différents sans risque de mélange."""
+    appelée pour plusieurs actes différents sans risque de mélange.
+
+    'etape' (numéro) OU 'profil' (nom, ex: "Dir. Solde") — au moins un des
+    deux est requis. Si 'profil' est fourni sans 'etape', l'API détecte
+    d'abord le circuit de l'acte, puis résout elle-même le numéro d'étape
+    correspondant à ce profil DANS ce circuit précis (le même nom de profil
+    peut correspondre à des numéros différents selon le circuit détecté).
+
+    'nature' + 'type_acte' : si fournis par GIRAFE, le circuit est
+    déterminé directement via la table de paramétrage officielle — 100%
+    fiable, à privilégier en production plutôt que de laisser l'API
+    deviner par mots-clés dans le texte."""
     import json as _json
     from app.services.workflow_service import get_moteur
     from app.services.extraction_service import extraire_texte_fichier
@@ -90,13 +110,36 @@ async def _traiter_une_verification(
 
     if moteur.workflow_actuel is None:
         if acte_text:
-            moteur.initialiser_workflow(acte_text)
+            moteur.initialiser_workflow(acte_text, nature, type_acte)
         elif fichier:
             contenu = await fichier.read()
             acte_text = extraire_texte_fichier(contenu, fichier.filename)
-            moteur.initialiser_workflow(acte_text)
+            moteur.initialiser_workflow(acte_text, nature, type_acte)
         else:
             raise HTTPException(400, "Fournissez acte_text ou fichier")
+
+    # Résolution automatique du numéro d'étape à partir du nom de profil,
+    # maintenant que le circuit de cet acte est connu.
+    if etape is None:
+        if not profil:
+            raise HTTPException(400, "Fournissez 'etape' (numéro) ou 'profil' (nom).")
+        profil_norm = " ".join(profil.strip().upper().split())
+        etape_trouvee = None
+        profils_disponibles = []
+        for num, config in moteur.workflow_actuel.items():
+            nom_config = " ".join(config["nom"].strip().upper().split())
+            profils_disponibles.append(config["nom"])
+            if nom_config == profil_norm:
+                etape_trouvee = num
+                break
+        if etape_trouvee is None:
+            raise HTTPException(
+                400,
+                f"Le profil « {profil} » n'existe pas dans le circuit détecté "
+                f"« {moteur.type_acte_detecte.value} ». Profils disponibles pour cet "
+                f"acte : {', '.join(profils_disponibles)}.",
+            )
+        etape = etape_trouvee
 
     fichier_bytes = None
     if fichier:
@@ -123,8 +166,21 @@ async def _traiter_une_verification(
 
 @app.post("/workflow/valider")
 async def valider_etape_api(
-    etape: int = Form(...),
     acte_id: str = Form(...),
+    etape: int = Form(None, description="Numéro d'étape — fournir CECI ou 'profil'."),
+    profil: str = Form(
+        None,
+        description=(
+            "Nom du profil (ex: 'Dir. Solde') — alternative à 'etape'. L'API "
+            "détecte le circuit de l'acte et résout elle-même le numéro "
+            "d'étape correspondant à ce profil dans ce circuit précis."
+        ),
+    ),
+    nature: str = Form(
+        None,
+        description="ARRETE / DECISION / DECIDE — avec 'type_acte', détection du circuit 100% fiable via la table de paramétrage officielle GIRAFE (utilisé seulement au tout premier appel pour cet acte_id).",
+    ),
+    type_acte: int = Form(None, description="Code numérique interne GIRAFE identifiant précisément le type d'acte."),
     acte_text: str = Form(None),
     fichier: UploadFile = File(None),
     agent_info: str = Form(
@@ -139,7 +195,7 @@ async def valider_etape_api(
     ),
 ):
     try:
-        return await _traiter_une_verification(etape, acte_id, acte_text, fichier, agent_info)
+        return await _traiter_une_verification(etape, acte_id, acte_text, fichier, agent_info, profil, nature, type_acte)
     except HTTPException:
         raise
     except ValueError as e:
@@ -150,10 +206,6 @@ async def valider_etape_api(
 
 @app.post("/workflow/valider-masse")
 async def valider_etape_masse_api(
-    etape: int = Form(
-        ...,
-        description="Numéro d'étape à vérifier — LE MÊME pour tous les actes de ce lot (un seul profil traite le lot).",
-    ),
     acte_ids: list[str] = Form(
         ...,
         description="Un identifiant d'acte par fichier, dans le même ordre que 'fichiers'.",
@@ -162,6 +214,16 @@ async def valider_etape_masse_api(
         ...,
         description="Les fichiers PDF/Word des actes à vérifier, un par acte, dans le même ordre que 'acte_ids'.",
     ),
+    etape: int = Form(None, description="Numéro d'étape — LE MÊME pour tous les actes du lot. Fournir CECI ou 'profil'."),
+    profil: str = Form(
+        None,
+        description=(
+            "Nom du profil (ex: 'Dir. Solde') — alternative à 'etape', appliqué "
+            "à tout le lot. Résolu automatiquement pour CHAQUE acte selon son "
+            "propre circuit détecté (peut donc correspondre à des numéros "
+            "d'étape différents d'un acte à l'autre du même lot)."
+        ),
+    ),
     agents_info: list[str] = Form(
         None,
         description=(
@@ -169,6 +231,19 @@ async def valider_etape_masse_api(
             "Optionnel : mettez une chaîne vide '' pour un acte donné si aucune "
             "info agent n'est disponible pour lui précisément."
         ),
+    ),
+    natures: list[str] = Form(
+        None,
+        description=(
+            "Une nature (ARRETE/DECISION/DECIDE) par acte, dans le même ordre "
+            "que 'fichiers' — avec 'types_acte', permet une détection du "
+            "circuit 100% fiable via la table de paramétrage officielle, "
+            "acte par acte (chaque acte du lot peut être d'un type différent)."
+        ),
+    ),
+    types_acte: list[int] = Form(
+        None,
+        description="Un code type_acte (numérique) par acte, dans le même ordre que 'fichiers'.",
     ),
 ):
     """Vérifie PLUSIEURS actes en une seule requête, pour la même étape/le
@@ -179,6 +254,9 @@ async def valider_etape_masse_api(
     des fichiers échoue, les autres continuent d'être traités normalement —
     l'échec est simplement rapporté dans le résultat de CET acte précis.
     """
+    if etape is None and not profil:
+        raise HTTPException(400, "Fournissez 'etape' (numéro) ou 'profil' (nom) pour tout le lot.")
+
     nb = len(fichiers)
     if len(acte_ids) != nb:
         raise HTTPException(400, f"{nb} fichier(s) mais {len(acte_ids)} acte_id(s) — il en faut autant des deux côtés.")
@@ -194,9 +272,11 @@ async def valider_etape_masse_api(
         acte_id = acte_ids[i]
         fichier = fichiers[i]
         agent_info = agents_info[i] if agents_info and agents_info[i] else None
+        nature_i = natures[i] if natures and i < len(natures) and natures[i] else None
+        type_acte_i = types_acte[i] if types_acte and i < len(types_acte) else None
 
         try:
-            resultat = await _traiter_une_verification(etape, acte_id, None, fichier, agent_info)
+            resultat = await _traiter_une_verification(etape, acte_id, None, fichier, agent_info, profil, nature_i, type_acte_i)
             resultats.append(resultat)
             if resultat.get("statut") == "Validé":
                 nb_valides += 1
@@ -206,14 +286,14 @@ async def valider_etape_masse_api(
             nb_erreurs += 1
             resultats.append({
                 "acte_id": acte_id, "etape": etape, "statut": "Erreur",
-                "message_verdict": f" Erreur de traitement pour l'acte « {acte_id} » : {e.detail}",
+                "message_verdict": f"❌ Erreur de traitement pour l'acte « {acte_id} » : {e.detail}",
                 "erreur": e.detail,
             })
         except Exception as e:
             nb_erreurs += 1
             resultats.append({
                 "acte_id": acte_id, "etape": etape, "statut": "Erreur",
-                "message_verdict": f" Erreur inattendue pour l'acte « {acte_id} » : {e}",
+                "message_verdict": f"❌ Erreur inattendue pour l'acte « {acte_id} » : {e}",
                 "erreur": str(e),
             })
 

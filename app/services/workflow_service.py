@@ -18,6 +18,20 @@ logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════
 #  WORKFLOWS (3 circuits)
+#
+#  Correspondance avec les noms officiels de la table de
+#  paramétrage GIRAFE (parametrage_type_acte_workflow.csv,
+#  colonne "ref_engine") — repère uniquement, à titre
+#  informatif. La détection du circuit applicable continue de
+#  se faire par mots-clés dans le texte (voir detecter_type_acte
+#  dans regles_service.py), pas via cette table.
+#
+#    TypeActe.AVANCEMENT_ECHELON      ↔ APAE : circuit COURT de
+#                                        l'avancement d'échelon (9 étapes)
+#    TypeActe.AUTRE                   ↔ APAG : circuit LONG,
+#                                        "autre" type d'acte (12 étapes)
+#    TypeActe.RETRAITE_FONCTIONNAIRE  ↔ RET  : circuit de la
+#                                        retraite fonctionnaire (13 étapes)
 # ═══════════════════════════════════════════════════════════
 
 def _etape(nom, role, tampons=None, signature=False, numero=False):
@@ -29,6 +43,7 @@ def _etape(nom, role, tampons=None, signature=False, numero=False):
         "numero_acte_requis": numero,
     }
 
+# ── APAE : circuit court de l'avancement d'échelon (9 étapes) ──
 WORKFLOW_AVANCEMENT_ECHELON = {
     1: _etape("Agent de Bureau", "Initiation"),
     2: _etape("Chef de Bureau", "1ère validation"),
@@ -41,6 +56,7 @@ WORKFLOW_AVANCEMENT_ECHELON = {
     9: _etape("Numéroteur", "Préparation numérotation", ["DGFP"], signature=True),
 }
 
+# ── RET : circuit de la retraite fonctionnaire (13 étapes) ──
 WORKFLOW_RETRAITE_FONCTIONNAIRE = {
     1: _etape("Agent de Bureau", "Initiation"),
     2: _etape("Chef de Bureau", "1ère validation"),
@@ -57,6 +73,7 @@ WORKFLOW_RETRAITE_FONCTIONNAIRE = {
     13: _etape("Numéroteur", "Préparation numérotation", ["DGFP", "DP", "DS", "DPB", "CF"], signature=True),
 }
 
+# ── APAG : circuit long, "autre" type d'acte (12 étapes) ──
 WORKFLOW_AUTRE_ACTE = {
     1: _etape("Agent de Bureau", "Initiation"),
     2: _etape("Chef de Bureau", "1ère validation"),
@@ -76,6 +93,16 @@ WORKFLOWS_CONFIG = {
     TypeActe.RETRAITE_FONCTIONNAIRE: WORKFLOW_RETRAITE_FONCTIONNAIRE,
     TypeActe.AVANCEMENT_ECHELON: WORKFLOW_AVANCEMENT_ECHELON,
     TypeActe.AUTRE: WORKFLOW_AUTRE_ACTE,
+}
+
+# Nom officiel GIRAFE (ref_engine) correspondant à chaque TypeActe interne
+# — purement informatif (affiché dans les réponses de l'API pour que
+# GIRAFE reconnaisse facilement son propre référentiel), n'affecte aucune
+# logique de détection.
+REF_ENGINE_PAR_TYPE_ACTE = {
+    TypeActe.AVANCEMENT_ECHELON: "APAE",
+    TypeActe.AUTRE: "APAG",
+    TypeActe.RETRAITE_FONCTIONNAIRE: "RET",
 }
 
 CODES_BLOQUANTS = {
@@ -140,6 +167,7 @@ class MoteurValidationGIRAFE:
         self.workflow_actuel = WORKFLOWS_CONFIG[self.type_acte_detecte]
         return {
             "type_acte_detecte": self.type_acte_detecte.value,
+            "ref_engine": REF_ENGINE_PAR_TYPE_ACTE.get(self.type_acte_detecte),  # APAE / APAG / RET, pour repère GIRAFE
             "nb_etapes": len(self.workflow_actuel),
             "workflow_detail": {
                 str(k): f"{v['nom']} — {v['role']}"
@@ -380,6 +408,7 @@ class MoteurValidationGIRAFE:
         return {
             "acte_id": acte_id,
             "type_acte": self.type_acte_detecte.value if self.type_acte_detecte else "inconnu",
+            "ref_engine": REF_ENGINE_PAR_TYPE_ACTE.get(self.type_acte_detecte),  # APAE / APAG / RET
             "nb_etapes_circuit": nb_etapes,
             "etapes_effectuees": etapes_faites,
             "etapes_manquantes": etapes_manquantes,
