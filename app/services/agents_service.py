@@ -509,19 +509,30 @@ def _normaliser_ref(t):
 def _charger_tables_reference():
     settings = get_settings()
     d = settings.data_dir
-    try:
-        corps_df = pd.read_csv(os.path.join(d, "corps.csv"))
-        classe_df = pd.read_csv(os.path.join(d, "classe.csv"))
-        echelon_df = pd.read_csv(os.path.join(d, "echelon.csv"))
-        cce_df = pd.read_csv(os.path.join(d, "corps_classe_echelon.csv"))
-        logger.info(
-            f"✅ Tables de référence chargées : corps={len(corps_df)}, classe={len(classe_df)}, "
-            f"echelon={len(echelon_df)}, corps_classe_echelon={len(cce_df)}"
-        )
-        return corps_df, classe_df, echelon_df, cce_df
-    except FileNotFoundError as e:
-        logger.warning(f"⚠️ Table de référence introuvable ({e}) — calcul de délai en mode repli uniquement.")
-        return None, None, None, None
+
+    def _charger_un_fichier(nom):
+        """Charge un seul fichier CSV, indépendamment des autres — si l'un
+        des 4 fichiers est absent ou corrompu, il ne doit PAS désactiver les
+        fonctionnalités qui reposent sur les 3 autres (ex: la détection du
+        corps via corps.csv doit continuer à fonctionner même si
+        classe.csv ou echelon.csv venait à manquer)."""
+        chemin = os.path.join(d, nom)
+        try:
+            df = pd.read_csv(chemin)
+            logger.info(f"✅ {nom} chargé ({len(df)} lignes)")
+            return df
+        except FileNotFoundError:
+            logger.warning(f"⚠️ {nom} introuvable — fonctionnalités associées désactivées.")
+            return None
+        except Exception as e:
+            logger.warning(f"⚠️ Erreur lors du chargement de {nom} ({e}) — fonctionnalités associées désactivées.")
+            return None
+
+    corps_df = _charger_un_fichier("corps.csv")
+    classe_df = _charger_un_fichier("classe.csv")
+    echelon_df = _charger_un_fichier("echelon.csv")
+    cce_df = _charger_un_fichier("corps_classe_echelon.csv")
+    return corps_df, classe_df, echelon_df, cce_df
 
 
 CORPS_DF, CLASSE_DF, ECHELON_DF, CCE_DF = _charger_tables_reference()
@@ -716,6 +727,15 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
 
     plusieurs = len(agents_acte) > 1
 
+    # Détecte, sur l'ensemble de l'acte, si NE SERAIT-CE QU'UNE SEULE trace
+    # de tableau de progression grade/échelon existe (motif "NCL NECH" ou
+    # équivalent). Si l'acte n'en contient absolument aucune, c'est le
+    # signe qu'il ne concerne tout simplement PAS l'avancement de grade
+    # (acte d'engagement, de nomination, de mutation, etc.) — dans ce cas,
+    # on ne signale RIEN du tout, plutôt que d'afficher à tort "tableau non
+    # exploitable" sur un acte qui n'a jamais eu vocation à en comporter un.
+    acte_concerne_par_avancement = bool(_extraire_paires_brutes(acte_text))
+
     # Détermine, pour chaque agent, sa liste de paires (grade, date) —
     # deux stratégies selon le cas :
     #
@@ -753,6 +773,12 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
 
         if not etapes:
+            if not acte_concerne_par_avancement:
+                # Aucune trace de tableau de progression nulle part dans
+                # l'acte : ce n'est pas une erreur d'extraction, cet acte ne
+                # concerne simplement pas l'avancement de grade. On ne
+                # signale rien pour cet agent.
+                continue
             code = "DELAI_NON_VERIFIABLE"
             checks[f"{prefixe} — Délai avancement"] = "ℹ Tableau de progression non exploitable (à vérifier manuellement)"
             anomalies.append({

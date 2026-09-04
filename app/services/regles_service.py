@@ -165,7 +165,23 @@ def extraire_infos_acte(acte: str) -> dict:
         elif "ARRÊTÉ" in texte_upper or "ARRETE" in texte_upper:
             infos["type_acte"] = "ARRÊTÉ"
 
-    # 4) CORPS
+    # 4) CORPS — recherche EN PRIORITÉ dans la vraie table de référence des
+    # corps (corps.csv), via le même mécanisme robuste déjà utilisé pour la
+    # vérification du visa (detecter_corps_depuis_texte). Beaucoup plus
+    # fiable qu'une liste codée en dur limitée à une vingtaine de corps :
+    # cette table couvre l'intégralité des corps officiels de la fonction
+    # publique, quel que soit le corps mentionné dans l'acte.
+    try:
+        from app.services.agents_service import detecter_corps_depuis_texte, CPS_INFOS_PAR_CODE  # import différé (anti-cycle)
+        code_corps = detecter_corps_depuis_texte(acte)
+        if code_corps:
+            infos["corps"] = CPS_INFOS_PAR_CODE.get(code_corps, {}).get("cps_libelle", "")
+    except Exception as e:
+        logger.warning(f"Détection du corps via la table de référence indisponible ({e}) — repli sur l'ancienne méthode.")
+
+    # Repli : ancienne méthode (liste codée en dur + regex), utilisée
+    # uniquement si la table de référence n'a rien trouvé — par exemple un
+    # environnement de test minimal sans les fichiers CSV chargés.
     corps_cibles = [
         "INSTITUTEURS ADJOINTS NF REF", "INSTITUTEURS ADJOINTS", "INSTITUTEUR ADJOINT",
         "PROFESSEURS DE CEM", "PROFESSEUR DE CEM", "PROFESSEURS DES CEM",
@@ -178,10 +194,11 @@ def extraire_infos_acte(acte: str) -> dict:
         "MAITRES CONTRACTUELS", "MAÎTRES CONTRACTUELS",
         "SPECIALISTES FONCTION PUBLIQUE", "CONSEILLERS JURIDIQUES",
     ]
-    for corps_ref in corps_cibles:
-        if corps_ref in texte_normalise:
-            infos["corps"] = corps_ref
-            break
+    if not infos["corps"]:
+        for corps_ref in corps_cibles:
+            if corps_ref in texte_normalise:
+                infos["corps"] = corps_ref
+                break
 
     if not infos["corps"]:
         m_corps = re.search(
