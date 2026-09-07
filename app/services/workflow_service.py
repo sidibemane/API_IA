@@ -106,12 +106,12 @@ REF_ENGINE_PAR_TYPE_ACTE = {
 }
 
 CODES_BLOQUANTS = {
-    "ENTETE_NON_CONFORME", "TYPE_ACTE_INCORRECT", "TYPE_ACTE_NON_DETECTE",
+    "ENTETE_NON_CONFORME",
     "SIGNATURE_MINISTRE_MANQUANTE", "NUMERO_ACTE_MANQUANT", "ERREUR_LECTURE",
     "DELAI_NON_CONFORME", "MATRICULE_NON_TROUVE_DANS_ACTE", "AGENT_INCONNU_BASE",
     "IDENTITE_NOM_INCORRECT", "IDENTITE_PRENOM_INCORRECT",
     "IDENTITE_DATE_NAISSANCE_INCORRECTE", "IDENTITE_CORPS_INCORRECT",
-    "SIGNATAIRE_INCORRECT",
+    "TIMBRE_INCORRECT",
 }
 CODES_IMPORTANTS = {
     "DATES_MANQUANTES", "DELAI_AVANCEMENT_A_VERIFIER", "DELAI_AVANCEMENT_INCORRECT",
@@ -161,8 +161,8 @@ class MoteurValidationGIRAFE:
         self.cache_vision[empreinte] = resultat
         return resultat
 
-    def initialiser_workflow(self, acte_text: str, nature: str = None, type_acte=None) -> dict:
-        type_str = detecter_type_acte(acte_text, nature, type_acte)
+    def initialiser_workflow(self, acte_text: str) -> dict:
+        type_str = detecter_type_acte(acte_text)
         self.type_acte_detecte = TypeActe(type_str)
         self.workflow_actuel = WORKFLOWS_CONFIG[self.type_acte_detecte]
         return {
@@ -198,7 +198,7 @@ class MoteurValidationGIRAFE:
             if not resultats_abc["point_A"]["conforme"]:
                 code = "ENTETE_NON_CONFORME"
                 anomalies.append({
-                    "code": code, "description": "En-tête non conforme [RÈGLE J-02]",
+                    "code": code, "description": "En-tête non conforme",
                     "criticite": determiner_criticite(code).value,
                     "profil_concerne": profil, "etape": etape,
                     "recommandation": "Corriger l'en-tête officiel.",
@@ -207,32 +207,18 @@ class MoteurValidationGIRAFE:
             else:
                 checks["En-tête officiel"] = "✅ CONFORME"
 
-            # Point B
-            if not resultats_abc["point_B"]["conforme"]:
-                code = "TYPE_ACTE_INCORRECT"
-                anomalies.append({
-                    "code": code,
-                    "description": f"Type incorrect. Constaté: {resultats_abc['point_B']['constate']}, Attendu: {resultats_abc['point_B']['attendu']} [RÈGLE J-03]",
-                    "criticite": determiner_criticite(code).value,
-                    "profil_concerne": profil, "etape": etape,
-                    "recommandation": "Vérifier la nature de l'acte.",
-                })
-                checks["Type d'acte"] = f"❌ Non conforme (attendu {resultats_abc['point_B']['attendu']})"
-            else:
-                checks["Type d'acte"] = f"✅ {resultats_abc['point_B']['constate']}"
-
             # Point C
             if not resultats_abc["point_C"]["conforme"]:
-                code = "SIGNATAIRE_INCORRECT"
+                code = "TIMBRE_INCORRECT"
                 anomalies.append({
-                    "code": code, "description": "Signataire incorrect [RÈGLE J-02]",
+                    "code": code, "description": "Timbre incorrect",
                     "criticite": determiner_criticite(code).value,
                     "profil_concerne": profil, "etape": etape,
                     "recommandation": f"Attendu : '{SIGNATAIRE_OFFICIEL}'",
                 })
-                checks["Signataire"] = "❌ NON CONFORME"
+                checks["Timbre"] = "❌ NON CONFORME"
             else:
-                checks["Signataire"] = "✅ CONFORME"
+                checks["Timbre"] = "✅ CONFORME"
 
             # Identité agent (matricule / nom / prénom / date de naissance vs base des agents)
             try:
@@ -338,17 +324,28 @@ class MoteurValidationGIRAFE:
         statut = StatutEtape.REJETE.value if anomalies_bloquantes else StatutEtape.VALIDE.value
 
         if anomalies_bloquantes:
-            liste_motifs = "; ".join(f"{a['code']} — {a['description']}" for a in anomalies_bloquantes)
             liste_recommandations = [
                 a["recommandation"] for a in anomalies_bloquantes if a.get("recommandation")
             ]
+            points = "\n".join(
+                f"{i}. {a['description']}"
+                + (f" → Action requise : {a['recommandation']}" if a.get("recommandation") else "")
+                for i, a in enumerate(anomalies_bloquantes, start=1)
+            )
             message_verdict = (
-                f"❌ Cet acte NE PEUT PAS être validé par le profil « {profil} » "
-                f"en raison de {len(anomalies_bloquantes)} anomalie(s) bloquante(s) : {liste_motifs}."
+                f"❌ Cet acte ne peut pas être validé à ce stade par le profil « {profil} ». "
+                f"L'examen a révélé {len(anomalies_bloquantes)} anomalie(s) bloquante(s) nécessitant "
+                f"une correction avant toute nouvelle soumission :\n\n"
+                f"{points}\n\n"
+                f"Une fois ces corrections apportées, l'acte pourra être resoumis pour validation."
             )
         else:
             liste_recommandations = []
-            message_verdict = f"✅ Cet acte est validé par le profil « {profil} », aucune anomalie bloquante."
+            message_verdict = (
+                f"✅ Cet acte a été examiné par le profil « {profil} » et satisfait à l'ensemble "
+                f"des exigences réglementaires vérifiées à cette étape. Aucune anomalie bloquante "
+                f"n'a été détectée."
+            )
 
         resultat = {
             "acte_id": acte_id,

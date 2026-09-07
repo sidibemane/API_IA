@@ -4,11 +4,6 @@ naissance) contre la base du personnel, et vérification des délais
 réglementaires d'avancement grade/échelon via les tables de référence
 (corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
 
-Ce module était vide dans l'API déployée : toute cette logique existait
-dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
-ce qui explique l'absence de vérification matricule/nom/prénom et de
-calcul de délai d'avancement dans les résultats de l'API.
-"""
 
 import difflib
 import json
@@ -346,13 +341,13 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
 
         checks[f"{prefixe} — Identification"] = f"✅ TROUVÉ — {agent_ref['nom']} {agent_ref['prenom']} (matricule {agent_ref.get('matricule') or 'n/c — identifié par date de naissance'})"
         if mode_identification == "matricule":
-            checks[f"{prefixe} — Matricule (acte vs base)"] = f"✅ CONFORME — '{identite_acte['matricule']}' trouvé dans la base des agents"
+            checks[f"{prefixe} — Matricule"] = f"✅ CONFORME — '{identite_acte['matricule']}' trouvé dans la base des agents"
         else:
-            checks[f"{prefixe} — Date de naissance (acte vs base)"] = f"✅ CONFORME — '{identite_acte.get('date_naissance')}' trouvée dans la base des agents"
+            checks[f"{prefixe} — Date de naissance"] = f"✅ CONFORME — '{identite_acte.get('date_naissance')}' trouvée dans la base des agents"
 
         if identite_acte["nom"] and _normaliser_texte_identite(identite_acte["nom"]) != _normaliser_texte_identite(agent_ref.get("nom")):
             code = "IDENTITE_NOM_INCORRECT"
-            checks[f"{prefixe} — Nom (acte vs base)"] = f"❌ Acte: '{identite_acte['nom']}' / Base: '{agent_ref.get('nom')}'"
+            checks[f"{prefixe} — Nom"] = f"❌ Acte: '{identite_acte['nom']}' / Base: '{agent_ref.get('nom')}'"
             anomalies.append({
                 "code": code,
                 "description": f"Nom incohérent : acte='{identite_acte['nom']}', base='{agent_ref.get('nom')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
@@ -361,11 +356,11 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                 "recommandation": "Vérifier l'orthographe du nom ou l'exactitude du matricule utilisé.",
             })
         elif identite_acte["nom"]:
-            checks[f"{prefixe} — Nom (acte vs base)"] = "✅ CONFORME"
+            checks[f"{prefixe} — Nom"] = "✅ CONFORME"
 
         if identite_acte["prenom"] and _normaliser_texte_identite(identite_acte["prenom"]) != _normaliser_texte_identite(agent_ref.get("prenom")):
             code = "IDENTITE_PRENOM_INCORRECT"
-            checks[f"{prefixe} — Prénom (acte vs base)"] = f"❌ Acte: '{identite_acte['prenom']}' / Base: '{agent_ref.get('prenom')}'"
+            checks[f"{prefixe} — Prénom"] = f"❌ Acte: '{identite_acte['prenom']}' / Base: '{agent_ref.get('prenom')}'"
             anomalies.append({
                 "code": code,
                 "description": f"Prénom incohérent : acte='{identite_acte['prenom']}', base='{agent_ref.get('prenom')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
@@ -374,14 +369,14 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                 "recommandation": "Vérifier l'orthographe du prénom ou l'exactitude du matricule utilisé.",
             })
         elif identite_acte["prenom"]:
-            checks[f"{prefixe} — Prénom (acte vs base)"] = "✅ CONFORME"
+            checks[f"{prefixe} — Prénom"] = "✅ CONFORME"
 
         if identite_acte["date_naissance"]:
             d_acte = _normaliser_date(identite_acte["date_naissance"])
             d_base = _normaliser_date(agent_ref.get("date_naissance"))
             if d_acte != d_base:
                 code = "IDENTITE_DATE_NAISSANCE_INCORRECTE"
-                checks[f"{prefixe} — Date de naissance (acte vs base)"] = f"❌ Acte: '{identite_acte['date_naissance']}' / Base: '{agent_ref.get('date_naissance')}'"
+                checks[f"{prefixe} — Date de naissance"] = f"❌ Acte: '{identite_acte['date_naissance']}' / Base: '{agent_ref.get('date_naissance')}'"
                 anomalies.append({
                     "code": code,
                     "description": f"Date de naissance incohérente : acte='{identite_acte['date_naissance']}', base='{agent_ref.get('date_naissance')}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
@@ -390,7 +385,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                     "recommandation": "Vérifier la date de naissance ou l'exactitude du matricule utilisé.",
                 })
             else:
-                checks[f"{prefixe} — Date de naissance (acte vs base)"] = "✅ CONFORME"
+                checks[f"{prefixe} — Date de naissance"] = "✅ CONFORME"
 
         if agent_ref.get("corps"):
             if corps_acte:
@@ -408,10 +403,10 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                     or ratio >= 0.6
                 )
                 if correspond:
-                    checks[f"{prefixe} — Corps (acte vs base)"] = f"✅ CONFORME — {agent_ref['corps']}"
+                    checks[f"{prefixe} — Corps"] = f"✅ CONFORME — {agent_ref['corps']}"
                 else:
                     code = "IDENTITE_CORPS_INCORRECT"
-                    checks[f"{prefixe} — Corps (acte vs base)"] = f"❌ Acte: '{corps_acte}' / Base: '{agent_ref['corps']}'"
+                    checks[f"{prefixe} — Corps"] = f"❌ Acte: '{corps_acte}' / Base: '{agent_ref['corps']}'"
                     anomalies.append({
                         "code": code,
                         "description": f"Corps incohérent : acte='{corps_acte}', base='{agent_ref['corps']}' pour {agent_ref.get('matricule') and 'le matricule ' + agent_ref['matricule'] or 'la date de naissance ' + str(agent_ref.get('date_naissance'))}.",
@@ -420,7 +415,7 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
                         "recommandation": "Vérifier le corps mentionné dans l'acte ou l'exactitude du matricule utilisé.",
                     })
             else:
-                checks[f"{prefixe} — Corps (base)"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'}) — corps non détecté dans le texte de l'acte, comparaison impossible"
+                checks[f"{prefixe} — Corps"] = f"ℹ {agent_ref['corps']} ({agent_ref.get('hierarchie') or 'n/c'}) — corps non détecté dans le texte de l'acte, comparaison impossible"
 
     return anomalies, checks
 
@@ -475,11 +470,11 @@ def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
 
     if loi_attendue_presente:
         attendu = "Loi n°61-33 (fonctionnaires)" if type_reel == "FONCT" else "Loi n°97-17 / Décret n°74-347 (non-fonctionnaires)"
-        checks["Visa (loi/décret) vs corps"] = f"✅ CONFORME — {libelle_corps} ({type_reel}), {attendu} bien présent(e)"
+        checks["Visa (loi/décret)"] = f"✅ CONFORME — {libelle_corps} ({type_reel}), {attendu} bien présent(e)"
     else:
         code = "VISA_INCOHERENT"
         attendu = "la Loi n°61-33 (fonctionnaires)" if type_reel == "FONCT" else "la Loi n°97-17 / le Décret n°74-347 (non-fonctionnaires)"
-        checks["Visa (loi/décret) vs corps"] = f"ℹ Corps '{libelle_corps}' ({type_reel}) — {attendu} non trouvée dans l'acte, à vérifier"
+        checks["Visa (loi/décret)"] = f"ℹ Corps '{libelle_corps}' ({type_reel}) — {attendu} non trouvée dans l'acte, à vérifier"
         anomalies.append({
             "code": code,
             "description": (
