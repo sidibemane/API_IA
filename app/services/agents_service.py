@@ -4,6 +4,11 @@ naissance) contre la base du personnel, et vérification des délais
 réglementaires d'avancement grade/échelon via les tables de référence
 (corps.csv, classe.csv, echelon.csv, corps_classe_echelon.csv).
 
+Ce module était vide dans l'API déployée : toute cette logique existait
+dans le notebook (cellules 11 et 12) mais n'avait jamais été portée ici,
+ce qui explique l'absence de vérification matricule/nom/prénom et de
+calcul de délai d'avancement dans les résultats de l'API.
+"""
 
 import difflib
 import json
