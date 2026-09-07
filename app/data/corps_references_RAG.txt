@@ -1,4 +1,4 @@
-=== CORPS : SPECIALISTES FONCTION PUBLIQUE A1 NF ===
+: SPECIALISTES FONCTION PUBLIQUE A1 NF ===
 Code : 10026 | Type : NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
@@ -354,6 +354,7 @@ Références juridiques :
 Code : 126_SG | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : VERIFICATEURS DU CONTROLE ECONOMIQUE ===
 Code : 12701 | Type : FONCT | Âge de retraite : 60 ans
@@ -413,6 +414,7 @@ Références juridiques :
 Code : 142_SG | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROTES ===
 Code : 14351 | Type : FONCT | Âge de retraite : 60 ans
@@ -1861,6 +1863,7 @@ Références juridiques :
 Code : 304_SG | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : CONDUCTEURS DE VEDETTES, GARDIENS DE PHARES, OUVRIERS DE PARCS, PREMIERS MAITRES ET MAITRES <PONT> OU <MACHINE>, PREMIERS MAITRES ET MAITRES PILOTES C3 ===
 Code : 30751 | Type : FONCT | Âge de retraite : 60 ans
@@ -1998,6 +2001,7 @@ Références juridiques :
 Code : 312_SG | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : ASSISTANTS SOCIAUX NF REF ===
 Code : 31300 | Type : NON_FONCT | Âge de retraite : 60 ans
@@ -2171,6 +2175,7 @@ Références juridiques :
 Code : 318_SG | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : AGENTS SANITAIRES NF REF ===
 Code : 31950 | Type : NON_FONCT | Âge de retraite : 60 ans
@@ -2206,6 +2211,7 @@ Références juridiques :
 Code : 319_SG | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : DOCTEURS VETERINAIRES A1 ===
 Code : 33025 | Type : FONCT | Âge de retraite : 60 ans
@@ -2229,6 +2235,7 @@ Références juridiques :
 Code : 330_SG | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INGENIEURS EN RESSOURCES ANIMALES NF ===
 Code : 33104 | Type : NON_FONCT | Âge de retraite : 60 ans
@@ -2372,6 +2379,7 @@ Références juridiques :
 Code : 349_SG | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : (non valide) SECRETAIRES DE DIRECTION C3 NF ===
 Code : 350_SG | Type : NON_FONCT | Âge de retraite : 60 ans
@@ -2641,96 +2649,115 @@ Références juridiques :
 Code : 41001 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : (to del)PROFESSEURS AGREGES NF REF ===
 Code : 41002 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS CERTIFIES ===
 Code : 41025 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROFESSEURS CERTIFIES NF REF ===
 Code : 41026 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSPECTEURS DE L'ENSEIGNEMENT ELEMENTAIRE OU DE L'EDUCATION PRESCOLAIRE ===
 Code : 41027 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROFESSEURS DE L'ENSEIGNEMENT SECONDAIRE NF REF ===
 Code : 41028 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS DE L'ENSEIGNEMENT SECONDAIRE ===
 Code : 41029 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié ; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSPECTEURS DE L'ENSEIGNEMENT ELEMENTAIRE OU DE L'EDUCATION PRESCOLAIRE NF REF ===
 Code : 41030 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié; Vu le décret n° 83-1057 du 1er octobre 1983; Vu le décret n°92-1196 du 19 août 1992
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSPECTEURS DE L'ENSEIGNEMENT MOYEN ET SECONDAIRE ===
 Code : 41031 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSPECTEURS DE L'ENSEIGNEMENT MOYEN ET SECONDAIRE NF REF ===
 Code : 41032 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSPECTEURS DE SPECIALITE ===
 Code : 41033 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSPECTEURS DE SPECIALITE NF REF ===
 Code : 41034 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PSYCHOLOGUES CONSEILLERS ===
 Code : 41035 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PSYCHOLOGUES CONSEILLERS NF REF ===
 Code : 41036 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS DE L'ENSEIGNEMENT MOYEN NF REF ===
 Code : 41200 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS DE L'ENSEIGNEMENT MOYEN ===
 Code : 41201 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié ; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : MEDIATEURS PEDAGOGIQUES NF REF ===
 Code : 41202 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : MEDIATEURS PEDAGOGIQUES ===
 Code : 41203 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : ADJOINTS D'ENSEIGNEMENT TECHNIQUE ===
 Code : 41207 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : ADJOINTS D'ENSEIGNEMENT TECHNIQUE NF REF ===
 Code : 41208 | Type : NON_FONCT | Âge de retraite : 60 ans
@@ -2742,276 +2769,331 @@ Références juridiques :
 Code : 41300 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : CONSEILLERS PRESCOLAIRES ===
 Code : 41301 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSPECTEURS ADJOINTS DE L'ENSEIGNEMENT ELEMENTAIRE OU DE L'EDUCATION PRESCOLAIRE NF REF ===
 Code : 41350 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié; Vu le décret n°77-987 du 14 novembre 1977; Vu le décret n°92-1196 du 19 août 1992
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSPECTEURS ADJOINTS DE L'ENSEIGNEMENT ELEMENTAIRE OU INSPECTEURS DE L'EDUCATION PRESCOLAIRE ===
 Code : 41351 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977; Vu le décret n° 97-442 du 29 avril 1997; Vu le décret n°92-1196 du 19 aout 1992
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROFESSEURS DE COLLEGE D'ENSEIGNEMENT MOYEN GENERAL NF REF ===
 Code : 41352 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS DE COLLEGE D'ENSEIGNEMENT MOYEN GENERAL ===
 Code : 41353 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : CHARGES D'ENSEIGNEMENT NF REF ===
 Code : 41354 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : CHARGES D'ENSEIGNEMENT ===
 Code : 41355 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 66-1033 du 23 décembre 1966 portant statut particulier du cadre des fonctionnaires de l’enseignement du premier degré
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROFESSEURS DE L'ENSEIGNEMENT TECHNIQUE PRATIQUE NF REF ===
 Code : 41356 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSTITUTEURS NF REF ===
 Code : 41450 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSTITUTEURS ===
 Code : 41451 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : MAITRES D'ENSEIGNEMENT TECHNIQUE ET PROFESSIONNEL NF REF ===
 Code : 41452 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : EDUCATEURS PRESCOLAIRES ===
 Code : 41453 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’enseignement, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : EDUCATEURS PRESCOLAIRES NF REF ===
 Code : 41454 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSTITUTEURS NF ===
 Code : 41550 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSTITUTEURS ADJOINTS NF REF ===
 Code : 41700 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSTITUTEURS ADJOINTS ===
 Code : 41701 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSTITUTEURS ADJOINTS NF ===
 Code : 41752 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : MONITEURS ===
 Code : 41901 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 66-1033 du 23 décembre 1966 portant statut particulier du cadre des fonctionnaires de l’enseignement du premier degré
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : MONITEURS NF REF ===
 Code : 41902 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSPECTEURS DE L'EDUCATION POPULAIRE, DE LA JEUNESSE ET DES SPORTS ===
 Code : 42025 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-1177 du 30 décembre 1977 portant statut particulier du cadre des fonctionnaires de l’Education populaire, de la Jeunesse et des Sports, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSPECTEURS DE L'EDUCATION POPULAIRE, DE LA JEUNESSE ET DES SPORTS NF REF ===
 Code : 42026 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS D'EDUCATION PHYSIQUE ET SPORTIVE ===
 Code : 42027 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-1177 du 30 décembre 1977 portant statut particulier du cadre des fonctionnaires de l’éducation populaire, de la Jeunesse et des Sports, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROFESSEURS D'EDUCATION PHYSIQUE ET SPORTIVE NF REF ===
 Code : 42028 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : CONSEILLERS D'EDUCATION POPULAIRE ===
 Code : 42351 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-1177 du 30 décembre 1977 portant statut particulier du cadre des fonctionnaires de l’Education populaire, de la Jeunesse et des Sports, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : CONSEILLERS D'EDUCATION POPULAIRE NF REF ===
 Code : 42352 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSPECTEURS ADJOINTS DE L'EDUCATION POPULAIRE, DE LA JEUNESSE ET DES SPORTS ===
 Code : 42353 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSPECTEURS ADJOINTS DE L'EDUCATION POPULAIRE, DE LA JEUNESSE ET DES SPORTS NF REF ===
 Code : 42354 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS ADJOINTS DE L'EDUCATION PHYSIQUE ET DU SPORT ===
 Code : 42355 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-1177 du 30 décembre 1977 portant statut particulier du cadre des fonctionnaires de l’Education populaire, de la Jeunesse et des Sports, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROFESSEURS ADJOINTS DE L'EDUCATION PHYSIQUE ET DU SPORT NF REF ===
 Code : 42356 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSTRUCTEURS D'EDUCATION PHYSIQUE ET SPORTIVE NF REF ===
 Code : 42450 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSTRUCTEURS D'EDUCATION PHYSIQUE ET SPORTIVE ===
 Code : 42451 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-1177 du 30 décembre 1977 portant statut particulier du cadre des fonctionnaires de l’Education populaire, de la Jeunesse et des Sports, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : MAITRES D'EDUCATION PHYSIQUE ET DU SPORTIVE NF REF ===
 Code : 42550 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : MAITRES D'EDUCATION PHYSIQUE ET DU SPORT ===
 Code : 42551 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-1177 du 30 décembre 1977 portant statut particulier du cadre des fonctionnaires de l’Education populaire, de la Jeunesse et des Sports, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : MAITRES ADJOINTS D'EDUCATION PHYSIQUE ET DU SPORT ===
 Code : 42651 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-1177 du 30 décembre 1977 portant statut particulier du cadre des fonctionnaires de l’Education populaire, de la Jeunesse et des Sports, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : MAITRES ADJOINTS D'EDUCATION PHYSIQUE ET DU SPORTIVE NF REF ===
 Code : 42652 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : LINGUISTES NF ===
 Code : 43102 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INSPECTEURS D'EDUCATION ARTISTIQUE OU MUSICALE ===
 Code : 43103 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°80-1074 du 22 octobre 1980 portant statut particulier du cadre des fonctionnaires de l’Education artistique et musicale; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : INSPECTEURS D'EDUCATION ARTISTIQUE OU MUSICALE NF REF ===
 Code : 43104 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS D'EDUCATION ARTISTIQUE OU MUSICALE ===
 Code : 43201 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°80-1074 du 22 octobre 1980 portant statut particulier du cadre des fonctionnaires de l’Education artistique et musicale; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : PROFESSEURS D'EDUCATION ARTISTIQUE OU MUSICALE NF REF ===
 Code : 43202 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : MAITRES D'EDUCATION ARTISTIQUE ET MUSICALE ===
 Code : 43551 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°80-1074 du 22 octobre 1980; Vu le décret n°92-1196 du 19 aout 1992
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : MAITRES D'EDUCATION ARTISTIQUE ET MUSICALE NF REF ===
 Code : 43552 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié; Vu le décret n°80-1074 du 22 octobre 1980; Vu le décret n°80-1074 du 22 octobre 1980; Vu le décret n°92-1196 du 19 aout 1992
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS DE L'ENSEIGNEMENT TECHNIQUE THEORIQUE NF REF ===
 Code : 44354 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : MAITRES D'ENSEIGNEMENT TECHNIQUE ET PROFESSIONNEL ===
 Code : 44455 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : CONSEILLERS AUX AFFAIRES CULTURELLES ===
 Code : 45101 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 80-717 du 14 juillet 1980 portant statut particulier du cadre des fonctionnaires de la Culture; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : CONSEILLERS AUX AFFAIRES CULTURELLES NF REF ===
 Code : 45102 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : CONSERVATEURS DE MUSEE ===
 Code : 45103 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 80-717 du 14 juillet 1980 portant statut particulier du cadre des fonctionnaires de la Culture; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : CONSERVATEURS DE MUSEE NF REF ===
 Code : 45104 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : ANIMATEURS CULTURELS NF REF ===
 Code : 45300 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : ANIMATEURS CULTURELS ===
 Code : 45301 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 80-717 du 14 juillet 1980 portant statut particulier du cadre des fonctionnaires de la Culture
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : TECHNICIENS DE MUSEE NF REF ===
 Code : 45450 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : TECHNICIENS DE MUSEE ===
 Code : 45451 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 80-717 du 14 juillet 1980 portant statut particulier du cadre des fonctionnaires de la Culture
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : GARDIENS DE MUSEE ===
 Code : 45951 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 80-717 du 14 juillet 1980 portant statut particulier du cadre des fonctionnaires de la Culture
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : GARDIENS DE MUSEE NF REF ===
 Code : 45952 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : INGENIEURS DES TRAVAUX PUBLICS OU DES TRANSPORTS ===
 Code : 45_SG | Type : FONCT | Âge de retraite : 60 ans
@@ -3203,11 +3285,13 @@ Références juridiques :
 Code : 71201 | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : PROFESSEURS CONTRACTUELS ===
 Code : 77889 | Type : ENS_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n°77-987 du 14 novembre 1977 portant statut particulier du cadre des fonctionnaires de l’Enseignement, modifié; VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+  - VU la loi n°61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
 
 === CORPS : ASSISTANTS EN GESTION PME/PMI NF ===
 Code : 80002 | Type : NON_FONCT | Âge de retraite : 60 ans
@@ -4331,11 +4415,13 @@ Références juridiques :
 Code : 944_SG | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : CONSEILLERS CULTURELS NF REF ===
 Code : 946_SG | Type : ENS_NON_FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - VU le décret n° 74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l’Etat, modifié
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
 
 === CORPS : CONTROLEURS DU TRAVAIL ET DE LA SECURITE SOCIALE ===
 Code : 9_SG | Type : FONCT | Âge de retraite : 60 ans

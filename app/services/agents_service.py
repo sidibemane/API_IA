@@ -427,10 +427,10 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
 
 def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
     """Vérifie que les références légales (loi/décret) citées dans l'acte
-    correspondent bien au VRAI statut (FONCT/NON_FONCT) du corps détecté,
-    selon la base de référence corps.csv — pas seulement à ce que le texte
-    de l'acte prétend lui-même. Conforme à la RÈGLE V-01 de la base de
-    connaissance métier :
+    correspondent au corps détecté — EN PRIORITÉ via la liste précise et
+    complète de ce corps (corps_references_RAG.txt, ex: un décret propre
+    au cadre des Juristes Conseils en plus des lois générales), et sinon
+    via la règle générale FONCT/NON_FONCT (RÈGLE V-01) :
       - Fonctionnaire  → doit citer la Loi n°61-33
       - Non-fonctionnaire → doit citer la Loi n°97-17 et/ou le Décret n°74-347
     """
@@ -447,30 +447,47 @@ def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
         return anomalies, checks
 
     infos_corps = CPS_INFOS_PAR_CODE.get(code_corps, {})
-    type_brut = infos_corps.get("cps_typecorps_code") or ""
     libelle_corps = infos_corps.get("cps_libelle", code_corps)
+    texte_norm = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
 
-    # La colonne cps_typecorps_code utilise plusieurs variantes selon les
-    # corps : "FONCT" / "NON_FONCT" pour la plupart, mais "ENS_FONCT" /
-    # "ENS_NON_FONCT" pour les corps de l'Enseignement (préfixe "ENS_").
-    # On se base sur la présence de "NON_FONCT" dans la valeur plutôt que
-    # sur une égalité stricte, pour couvrir toutes ces variantes.
+    references_precises = REFERENCES_PAR_CODE_CORPS.get(str(code_corps))
+
+    if references_precises and references_precises["references"]:
+        # ── Vérification précise, propre à CE corps ──
+        type_reel = references_precises["type"]
+        numeros_attendus = references_precises["references"]
+        numeros_manquants = [n for n in numeros_attendus if n not in texte_norm]
+
+        if not numeros_manquants:
+            checks["Visa (loi/décret)"] = f"✅ CONFORME — {libelle_corps} ({type_reel}), toutes les références attendues sont présentes ({', '.join(numeros_attendus)})"
+        else:
+            code = "VISA_INCOHERENT"
+            checks["Visa (loi/décret)"] = f"ℹ Corps '{libelle_corps}' — référence(s) manquante(s) : n°{', n°'.join(numeros_manquants)} (attendues : n°{', n°'.join(numeros_attendus)})"
+            anomalies.append({
+                "code": code,
+                "description": (
+                    f"Pour le corps '{libelle_corps}', la ou les référence(s) légale(s) "
+                    f"n°{', n°'.join(numeros_manquants)} n'ont pas été retrouvée(s) dans le texte de l'acte "
+                    f"(attendues au total : n°{', n°'.join(numeros_attendus)})."
+                ),
+                "criticite": determiner_criticite(code).value,
+                "profil_concerne": profil, "etape": etape,
+                "recommandation": "Vérifier que toutes les références légales attendues pour ce corps figurent bien dans l'acte.",
+            })
+        return anomalies, checks
+
+    # ── Repli : ce corps n'est pas dans corps_references_RAG.txt, on
+    # retombe sur la règle générale FONCT/NON_FONCT (RÈGLE V-01) ──
+    type_brut = infos_corps.get("cps_typecorps_code") or ""
     if "NON_FONCT" in type_brut:
         type_reel = "NON_FONCT"
     elif "FONCT" in type_brut:
         type_reel = "FONCT"
     else:
-        return anomalies, checks  # donnée de référence vraiment absente/inattendue, on ne bloque pas
+        return anomalies, checks
 
-    texte_norm = unicodedata.normalize("NFKD", acte_text.lower()).encode("ascii", "ignore").decode("ascii")
     cite_loi_non_fonctionnaire = "97-17" in texte_norm or "74-347" in texte_norm
     cite_loi_fonctionnaire = "61-33" in texte_norm
-
-    # On vérifie uniquement que LA LOI ATTENDUE pour ce corps est bien
-    # présente dans l'acte — peu importe si d'autres références légales
-    # apparaissent aussi (un agent peut légitimement ajouter des décrets
-    # spécifiques à son corps, non répertoriés dans notre base ; ce n'est
-    # pas une erreur).
     loi_attendue_presente = cite_loi_fonctionnaire if type_reel == "FONCT" else cite_loi_non_fonctionnaire
 
     if loi_attendue_presente:
@@ -565,6 +582,40 @@ if CCE_DF is not None:
     for _, _row in CCE_DF.iterrows():
         _cle = (str(_row["cce_cps_code"]), str(_row["cce_cls_code"]), str(_row["cce_ech_code"]))
         DUREE_LOOKUP[_cle] = int(_row["cce_duree"])
+
+
+# ═══════════════════════════════════════════════════════════
+#  RÉFÉRENCES JURIDIQUES PRÉCISES PAR CORPS
+#  (corps_references_RAG.txt — un bloc par corps, avec son code, son
+#  type FONCT/NON_FONCT et la liste complète des lois/décrets attendus
+#  pour CE corps précis, y compris la loi générale RÈGLE V-01.)
+# ═══════════════════════════════════════════════════════════
+
+_RE_NUMERO_REFERENCE = re.compile(r"n°\s*(\d{2,4}-\d{1,4})")
+
+
+def _charger_references_par_corps():
+    settings = get_settings()
+    chemin = os.path.join(settings.data_dir, "corps_references_RAG.txt")
+    resultats = {}
+    try:
+        with open(chemin, "r", encoding="utf-8") as f:
+            contenu = f.read()
+        blocs = contenu.split("=== CORPS")[1:]
+        for bloc in blocs:
+            m_code = re.search(r"Code\s*:\s*(\S+)", bloc)
+            m_type = re.search(r"Type\s*:\s*(\S+)", bloc)
+            if not (m_code and m_type):
+                continue
+            references = list(dict.fromkeys(_RE_NUMERO_REFERENCE.findall(bloc)))
+            resultats[m_code.group(1)] = {"type": m_type.group(1), "references": references}
+        logger.info(f"✅ corps_references_RAG.txt chargé ({len(resultats)} corps avec références précises)")
+    except FileNotFoundError:
+        logger.warning("⚠️ corps_references_RAG.txt introuvable — repli sur la vérification générale FONCT/NON_FONCT uniquement (RÈGLE V-01).")
+    return resultats
+
+
+REFERENCES_PAR_CODE_CORPS = _charger_references_par_corps()
 
 _HIER_RE = re.compile(r'\b(AS|A1|A2|A3|B1|B2|B3|B4|C1|C2|C3|C4|D1|D2|D3|D4)\b')
 
