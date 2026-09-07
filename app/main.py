@@ -66,20 +66,14 @@ def poser_question_rag(req: RAGQuestionRequest):
 def initialiser_workflow_api(
     acte_id: str = Form(...),
     acte_text: str = Form(...),
-    nature: str = Form(
-        None,
-        description="ARRETE / DECISION / DECIDE — avec 'type_acte', permet une détection 100% fiable du circuit via la table de paramétrage officielle GIRAFE, au lieu du repli par mots-clés.",
-    ),
-    type_acte: int = Form(None, description="Code numérique interne GIRAFE identifiant précisément le type d'acte (voir parametrage_type_acte_workflow.csv)."),
 ):
     from app.services.workflow_service import get_moteur
     moteur = get_moteur(acte_id)
-    return moteur.initialiser_workflow(acte_text, nature, type_acte)
+    return moteur.initialiser_workflow(acte_text)
 
 
 async def _traiter_une_verification(
     etape, acte_id: str, acte_text: str, fichier: UploadFile, agent_info: str, profil: str = None,
-    nature: str = None, type_acte=None,
 ) -> dict:
     """Logique de vérification pour UN acte, réutilisée par l'endpoint
     unitaire (/workflow/valider) et l'endpoint en masse
@@ -91,12 +85,7 @@ async def _traiter_une_verification(
     deux est requis. Si 'profil' est fourni sans 'etape', l'API détecte
     d'abord le circuit de l'acte, puis résout elle-même le numéro d'étape
     correspondant à ce profil DANS ce circuit précis (le même nom de profil
-    peut correspondre à des numéros différents selon le circuit détecté).
-
-    'nature' + 'type_acte' : si fournis par GIRAFE, le circuit est
-    déterminé directement via la table de paramétrage officielle — 100%
-    fiable, à privilégier en production plutôt que de laisser l'API
-    deviner par mots-clés dans le texte."""
+    peut correspondre à des numéros différents selon le circuit détecté)."""
     import json as _json
     from app.services.workflow_service import get_moteur
     from app.services.extraction_service import extraire_texte_fichier
@@ -110,11 +99,11 @@ async def _traiter_une_verification(
 
     if moteur.workflow_actuel is None:
         if acte_text:
-            moteur.initialiser_workflow(acte_text, nature, type_acte)
+            moteur.initialiser_workflow(acte_text)
         elif fichier:
             contenu = await fichier.read()
             acte_text = extraire_texte_fichier(contenu, fichier.filename)
-            moteur.initialiser_workflow(acte_text, nature, type_acte)
+            moteur.initialiser_workflow(acte_text)
         else:
             raise HTTPException(400, "Fournissez acte_text ou fichier")
 
@@ -176,11 +165,6 @@ async def valider_etape_api(
             "d'étape correspondant à ce profil dans ce circuit précis."
         ),
     ),
-    nature: str = Form(
-        None,
-        description="ARRETE / DECISION / DECIDE — avec 'type_acte', détection du circuit 100% fiable via la table de paramétrage officielle GIRAFE (utilisé seulement au tout premier appel pour cet acte_id).",
-    ),
-    type_acte: int = Form(None, description="Code numérique interne GIRAFE identifiant précisément le type d'acte."),
     acte_text: str = Form(None),
     fichier: UploadFile = File(None),
     agent_info: str = Form(
@@ -195,7 +179,7 @@ async def valider_etape_api(
     ),
 ):
     try:
-        return await _traiter_une_verification(etape, acte_id, acte_text, fichier, agent_info, profil, nature, type_acte)
+        return await _traiter_une_verification(etape, acte_id, acte_text, fichier, agent_info, profil)
     except HTTPException:
         raise
     except ValueError as e:
@@ -232,19 +216,6 @@ async def valider_etape_masse_api(
             "info agent n'est disponible pour lui précisément."
         ),
     ),
-    natures: list[str] = Form(
-        None,
-        description=(
-            "Une nature (ARRETE/DECISION/DECIDE) par acte, dans le même ordre "
-            "que 'fichiers' — avec 'types_acte', permet une détection du "
-            "circuit 100% fiable via la table de paramétrage officielle, "
-            "acte par acte (chaque acte du lot peut être d'un type différent)."
-        ),
-    ),
-    types_acte: list[int] = Form(
-        None,
-        description="Un code type_acte (numérique) par acte, dans le même ordre que 'fichiers'.",
-    ),
 ):
     """Vérifie PLUSIEURS actes en une seule requête, pour la même étape/le
     même profil — utile pour un traitement en masse (ex: un agent GIRAFE
@@ -272,11 +243,9 @@ async def valider_etape_masse_api(
         acte_id = acte_ids[i]
         fichier = fichiers[i]
         agent_info = agents_info[i] if agents_info and agents_info[i] else None
-        nature_i = natures[i] if natures and i < len(natures) and natures[i] else None
-        type_acte_i = types_acte[i] if types_acte and i < len(types_acte) else None
 
         try:
-            resultat = await _traiter_une_verification(etape, acte_id, None, fichier, agent_info, profil, nature_i, type_acte_i)
+            resultat = await _traiter_une_verification(etape, acte_id, None, fichier, agent_info, profil)
             resultats.append(resultat)
             if resultat.get("statut") == "Validé":
                 nb_valides += 1
