@@ -444,7 +444,6 @@ def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
 
     code_corps = detecter_corps_depuis_texte(acte_text)
     if not code_corps:
-        checks["Visa (loi/décret)"] = "ℹ Corps mentionné dans l'acte non reconnu dans la base de référence (corps.csv) — vérification du visa impossible pour ce corps"
         return anomalies, checks
 
     infos_corps = CPS_INFOS_PAR_CODE.get(code_corps, {})
