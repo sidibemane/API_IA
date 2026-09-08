@@ -444,6 +444,7 @@ def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
 
     code_corps = detecter_corps_depuis_texte(acte_text)
     if not code_corps:
+        checks["Visa (loi/décret)"] = "ℹ Corps mentionné dans l'acte non reconnu dans la base de référence (corps.csv) — vérification du visa impossible pour ce corps"
         return anomalies, checks
 
     infos_corps = CPS_INFOS_PAR_CODE.get(code_corps, {})
@@ -633,9 +634,17 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
     candidats = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib in texte_norm]
 
     if not candidats:
-        hierarchies_trouvees = _HIER_RE.findall(texte_norm)
-        mots = [m for m in texte_norm.split() if len(m) >= 5]
-        for mot in mots[:5]:
+        # Le repli par mot (ci-dessous) ne doit chercher que dans la partie
+        # OPÉRATIVE de l'acte (à partir de "ARTICLE PREMIER"/"DECIDE"/
+        # "ARRETE"), jamais dans les clauses "VU la loi..." — sinon un mot
+        # incident comme "agents" dans "aux agents non fonctionnaires" peut
+        # être confondu avec un vrai corps ("AGENTS SANITAIRES...").
+        m_debut_operatif = re.search(r"\bARTICLE\s+PREMIER\b|\bDECIDE\s*:|\bARRETE\s*:", texte_norm)
+        zone_recherche = texte_norm[m_debut_operatif.start():] if m_debut_operatif else texte_norm
+
+        hierarchies_trouvees = _HIER_RE.findall(zone_recherche)
+        mots = [m for m in zone_recherche.split() if len(m) >= 5]
+        for mot in mots:
             famille = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib.split()[0] == mot]
             if not famille:
                 continue
@@ -643,7 +652,7 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
             if hierarchies_trouvees:
                 for h in hierarchies_trouvees:
                     for lib, code, typ in famille:
-                        if (" " + lib + " ").endswith(" " + h + " "):
+                        if f" {h} " in f" {lib} ":
                             trouve = [(lib, code, typ)]
                             break
                     if trouve:
