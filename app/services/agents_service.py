@@ -458,12 +458,15 @@ def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
         type_reel = references_precises["type"]
         numeros_attendus = references_precises["references"]
         numeros_manquants = [n for n in numeros_attendus if n not in texte_norm]
+        textes_par_numero = references_precises.get("textes", {})
 
         if not numeros_manquants:
-            checks["Visa (loi/décret)"] = f"✅ CONFORME — {libelle_corps} ({type_reel}), toutes les références attendues sont présentes ({', '.join(numeros_attendus)})"
+            textes_presents = [textes_par_numero.get(n, f"n°{n}").rstrip(" ;.,") for n in numeros_attendus]
+            checks["Visa (loi/décret)"] = f"✅ CONFORME — les références attendues sont présentes {' ; '.join(textes_presents)}"
         else:
             code = "VISA_INCOHERENT"
-            checks["Visa (loi/décret)"] = f"ℹ Corps '{libelle_corps}' — référence(s) manquante(s) : n°{', n°'.join(numeros_manquants)} (attendues : n°{', n°'.join(numeros_attendus)})"
+            textes_manquants = [textes_par_numero.get(n, f"n°{n}").rstrip(" ;.,") for n in numeros_manquants]
+            checks["Visa (loi/décret)"] = f"ℹ Référence(s) manquante(s) : {' ; '.join(textes_manquants)}"
             anomalies.append({
                 "code": code,
                 "description": (
@@ -608,8 +611,20 @@ def _charger_references_par_corps():
             m_type = re.search(r"Type\s*:\s*(\S+)", bloc)
             if not (m_code and m_type):
                 continue
-            references = list(dict.fromkeys(_RE_NUMERO_REFERENCE.findall(bloc)))
-            resultats[m_code.group(1)] = {"type": m_type.group(1), "references": references}
+            # Chaque ligne "  - <texte complet>" est une référence légale
+            lignes_refs = re.findall(r"^\s*-\s*(.+)$", bloc, re.MULTILINE)
+            references = []
+            textes_par_numero = {}
+            for ligne in lignes_refs:
+                ligne_propre = " ".join(ligne.split())
+                m_num = _RE_NUMERO_REFERENCE.search(ligne_propre)
+                if not m_num:
+                    continue
+                numero = m_num.group(1)
+                if numero not in textes_par_numero:
+                    references.append(numero)
+                    textes_par_numero[numero] = ligne_propre
+            resultats[m_code.group(1)] = {"type": m_type.group(1), "references": references, "textes": textes_par_numero}
         logger.info(f"✅ corps_references_RAG.txt chargé ({len(resultats)} corps avec références précises)")
     except FileNotFoundError:
         logger.warning("⚠️ corps_references_RAG.txt introuvable — repli sur la vérification générale FONCT/NON_FONCT uniquement (RÈGLE V-01).")
