@@ -4428,3 +4428,9 @@ Code : 9_SG | Type : FONCT | Âge de retraite : 60 ans
 Références juridiques :
   - Vu la loi n° 61-33 du 15 juin 1961 relative au statut général des fonctionnaires, modifiée ;
   - VU le décret n°95-264 du 10 mars 1995 portant délégation de pouvoir du Président de la République en matière d'administration et de gestion du personnel
+
+=== CORPS : SOCIO-ECONOMISTE ===
+Code : 900030 | Type : NON_FONCT | Âge de retraite : 60 ans
+Références juridiques :
+  - Vu la loi n°97-17 du 1er décembre 1997, portant code du travail, modifiée ;
+  - VU le décret n°74-347 du 12 avril 1974 fixant le régime spécial applicable aux agents non fonctionnaires de l'Etat, modifié
