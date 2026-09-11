@@ -118,11 +118,28 @@ _RE_PREFIXE_MATRICULE = re.compile(r"matricule\s*(?:de\s*solde)?\s*n?°?\s*:?\s*
 
 
 def extraire_identite_agent(acte_text: str) -> list:
-    """Repère chaque matricule (6 chiffres + 1 lettre) dans l'acte et tente
-    d'identifier le nom/prénom juste avant, ainsi que la date de naissance
-    à proximité. Retourne une liste (un acte peut concerner plusieurs agents)."""
+    """Repère chaque matricule dans l'acte et tente d'identifier le nom/prénom
+    juste avant, ainsi que la date de naissance à proximité. Retourne une
+    liste (un acte peut concerner plusieurs agents)."""
     agents = []
-    matches = list(_RE_MATRICULE.finditer(acte_text))
+    matches_bruts = list(_RE_MATRICULE.finditer(acte_text))
+
+    # ⚠️ CORRECTIF : le MÊME matricule peut être cité plusieurs fois dans
+    # le même acte (une fois par article qui le mentionne — très courant :
+    # "Article premier... matricule X" puis "Article 2... matricule X").
+    # Ce n'est PAS plusieurs agents différents. On ne garde que la
+    # DERNIÈRE occurrence de chaque répétition consécutive du même
+    # matricule, pour que le bloc de texte analysé démarre juste avant les
+    # données réelles (le tableau suit généralement la dernière mention),
+    # sans le couper prématurément à cause d'une mention plus ancienne.
+    matches = []
+    for m in matches_bruts:
+        matricule_norm = _normaliser_matricule(m.group(1))
+        if matches and _normaliser_matricule(matches[-1].group(1)) == matricule_norm:
+            matches[-1] = m
+        else:
+            matches.append(m)
+
     for i, m in enumerate(matches):
         matricule = _normaliser_matricule(m.group(1))
         fenetre_avant = acte_text[max(0, m.start() - 220):m.start()]
@@ -813,16 +830,37 @@ def _extraire_paires_brutes(texte: str):
 
 def _tronquer_a_la_premiere_incoherence(paires: list):
     """Garde-fou : dans une vraie progression de carrière, les dates
-    avancent TOUJOURS dans le temps. Une date qui recule ou n'avance pas
-    est le signe fiable d'une confusion d'extraction (mélange entre deux
-    agents) — on tronque la séquence à ce point-là plutôt que de produire
-    des comparaisons absurdes en aval."""
+    avancent TOUJOURS dans le temps. Une date qui recule est le signe
+    fiable d'une confusion d'extraction (mélange entre deux agents) — on
+    tronque la séquence à ce point-là plutôt que de produire des
+    comparaisons absurdes en aval.
+
+    ⚠️ CORRECTIF : un doublon EXACT (même grade ET même date consécutifs)
+    n'est PAS une incohérence — c'est une mise en page de tableau tout à
+    fait normale, où la dernière ligne de "Ancienne situation" est
+    répétée comme première ligne de "Nouvelle situation" (le grade de
+    départ sert de point d'ancrage aux deux tableaux). On ignore ce
+    doublon (on ne l'ajoute pas deux fois) au lieu de tronquer toute la
+    suite, qui reste une progression valide. On ne tronque que si la
+    date recule VRAIMENT (délai négatif), ou si un même grade réapparaît
+    avec une date différente (ça, en revanche, reste un vrai signe de
+    confusion d'extraction)."""
     if not paires:
         return None
     paires_valides = [paires[0]]
     for grade, date in paires[1:]:
-        derniere_date = paires_valides[-1][1]
-        if calcul_delai_annees(derniere_date, date) <= 0:
+        dernier_grade, derniere_date = paires_valides[-1]
+        if grade == dernier_grade and date == derniere_date:
+            # Doublon exact (jonction ancienne/nouvelle situation) : on
+            # l'ignore simplement, la séquence continue normalement.
+            continue
+        delai = calcul_delai_annees(derniere_date, date)
+        if delai <= 0:
+            # Date qui recule (erreur) OU qui n'avance pas avec un grade
+            # différent (cas KAMARA : plusieurs échelons validés à la même
+            # date via une régularisation d'ancienneté — pas une vraie
+            # progression année par année, on ne peut pas la vérifier
+            # automatiquement) : on tronque ici, comme avant.
             break
         paires_valides.append((grade, date))
     return paires_valides
