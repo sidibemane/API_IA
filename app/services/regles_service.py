@@ -119,7 +119,13 @@ def extraire_infos_acte(acte: str) -> dict:
     }
 
     texte_upper = acte.upper()
-    texte_normalise = "  ".join(texte_upper.split())
+    # ⚠️ CORRECTIF : simple espace (au lieu du double espace "  ".join(...))
+    # — avec deux espaces, AUCUNE entrée de "corps_cibles" ci-dessous ne
+    # pouvait jamais matcher (ex: "INSTITUTEURS ADJOINTS" ne matchait jamais
+    # car le texte normalisé contenait "INSTITUTEURS  ADJOINTS"). Ce repli
+    # ne s'active que si detecter_corps_depuis_texte() n'a rien trouvé, mais
+    # il doit rester fonctionnel pour les cas où il est sollicité.
+    texte_normalise = " ".join(texte_upper.split())
     lignes = acte.split("\n")
 
     # 1) EN-TÊTE

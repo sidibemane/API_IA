@@ -90,7 +90,21 @@ def recharger_base_agents():
 #  2. EXTRACTION DE L'IDENTITÉ DEPUIS LE TEXTE DE L'ACTE
 # ═══════════════════════════════════════════════════════════
 
-_RE_MATRICULE = re.compile(r"\b(\d{6}[A-Z])\b")
+# ⚠️ CORRECTIF : format canonique "615987B" (6 chiffres + 1 lettre), mais
+# aussi les formats réels observés sur les actes officiels avec séparateurs
+# : "687.450/F", "687 450 F", "687-450F", etc. Le groupe capturé garde la
+# ponctuation d'origine ; elle est nettoyée ensuite par _normaliser_matricule.
+_RE_MATRICULE = re.compile(r"\b(\d{3}\s?[.\-]?\s?\d{3}\s?[/\-]?\s?[A-Z])\b")
+
+
+def _normaliser_matricule(matricule: str) -> str:
+    """Retire toute ponctuation/espace d'un matricule pour le ramener au
+    format canonique utilisé dans base_agents.json (ex: '687.450/F' -> '687450F')."""
+    if not matricule:
+        return ""
+    return re.sub(r"[.\-/\s]", "", str(matricule)).upper()
+
+
 _RE_NOM_NARRATIF = re.compile(
     r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*,?\s*$"
 )
@@ -110,7 +124,7 @@ def extraire_identite_agent(acte_text: str) -> list:
     agents = []
     matches = list(_RE_MATRICULE.finditer(acte_text))
     for i, m in enumerate(matches):
-        matricule = m.group(1)
+        matricule = _normaliser_matricule(m.group(1))
         fenetre_avant = acte_text[max(0, m.start() - 220):m.start()]
         fenetre_avant = _RE_PREFIXE_MATRICULE.sub("", fenetre_avant)
 
@@ -126,7 +140,14 @@ def extraire_identite_agent(acte_text: str) -> list:
         if m_date:
             date_naissance = m_date.group(1).strip()
 
-        fin_bloc = matches[i + 1].start() if i + 1 < len(matches) else min(len(acte_text), m.end() + 600)
+        # ⚠️ Fenêtre volontairement large (au lieu de 600 caractères) : sur
+        # un acte de plusieurs pages, le tableau de progression grade/
+        # échelon peut se trouver loin après la mention du matricule (ex:
+        # matricule en page 1, tableau "Ancienne/Nouvelle situation" en
+        # page 2). Une fenêtre trop courte coupait le texte avant
+        # d'atteindre ce tableau, qui devenait alors invisible pour
+        # verifier_delais_avancement même s'il existait réellement.
+        fin_bloc = matches[i + 1].start() if i + 1 < len(matches) else min(len(acte_text), m.end() + 6000)
         bloc_progression = acte_text[m.end():fin_bloc]
 
         agents.append({
@@ -751,6 +772,34 @@ _RE_GRADE_PROGRESSION = re.compile(r"(?:\d+CL|PPL|HC)\s+\d+ECH|CEX", re.IGNORECA
 _RE_DATE_PROGRESSION = re.compile(r"\d{2}[./]\d{2}[./]\d{4}")
 
 
+_RE_HEADER_TABLEAU_AVANCEMENT = re.compile(
+    r"ANCIENNE\s+SITUATION|NOUVELLE\s+SITUATION|GRADE\s+ET\s+ECHELON",
+    re.IGNORECASE,
+)
+
+
+def _localiser_bloc_tableau(acte_text: str) -> str:
+    """Isole la zone de texte contenant le tableau de progression grade/
+    échelon (repérée via son en-tête 'Ancienne/Nouvelle situation' ou
+    'Grade et échelon'), plutôt que de renvoyer tout le texte de l'acte.
+
+    Sert de repli pour un agent sans matricule (voir plus bas) : utiliser
+    TOUT le texte de l'acte comme bloc_progression casse le comptage
+    grades/dates de _extraire_paires_brutes, car d'autres dates sans
+    rapport avec le tableau (date de naissance, périodes de majoration
+    d'ancienneté "Du 20.10.2003 au 30.09.2005", "à compter du...")
+    apparaissent ailleurs dans le document et déséquilibrent le nombre
+    total de dates par rapport au nombre de grades."""
+    texte_norm = unicodedata.normalize("NFKD", acte_text).encode("ascii", "ignore").decode("ascii")
+    m = _RE_HEADER_TABLEAU_AVANCEMENT.search(texte_norm)
+    if not m:
+        return acte_text
+    debut = m.start()
+    m_article_suivant = re.search(r"\bARTICLE\s+\d", texte_norm[m.end():], re.IGNORECASE)
+    fin = m.end() + m_article_suivant.start() if m_article_suivant else min(len(acte_text), debut + 3000)
+    return acte_text[debut:fin]
+
+
 def _extraire_paires_brutes(texte: str):
     """Extrait toutes les paires (grade, date) trouvées dans le texte
     donné, dans leur ordre d'apparition physique — sans jugement sur leur
@@ -798,6 +847,22 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
     checks = {}
 
     if not agents_acte:
+        # ⚠️ CORRECTIF : repli par date de naissance quand aucun matricule
+        # n'a pu être trouvé dans l'acte — même mécanisme déjà utilisé par
+        # verifier_identite_agent (extraire_identite_par_date_naissance),
+        # réutilisé ici pour que la vérification des délais d'avancement ne
+        # soit plus perdue sur les actes d'ENGAGEMENT/RÉGULARISATION où
+        # l'agent n'a pas encore de matricule (cas réel observé : un acte
+        # de régularisation avec un vrai tableau grade/échelon, mais sans
+        # aucun matricule dans le texte). bloc_progression est mis à tout
+        # le texte de l'acte (au lieu de vide, comme pour l'identité) car
+        # ici on a justement besoin d'y localiser le tableau.
+        agents_acte = extraire_identite_par_date_naissance(acte_text)
+        bloc_tableau = _localiser_bloc_tableau(acte_text)
+        for a in agents_acte:
+            a["bloc_progression"] = bloc_tableau
+
+    if not agents_acte:
         return anomalies, checks
 
     plusieurs = len(agents_acte) > 1
@@ -809,7 +874,14 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
     # (acte d'engagement, de nomination, de mutation, etc.) — dans ce cas,
     # on ne signale RIEN du tout, plutôt que d'afficher à tort "tableau non
     # exploitable" sur un acte qui n'a jamais eu vocation à en comporter un.
-    acte_concerne_par_avancement = bool(_extraire_paires_brutes(acte_text))
+    # ⚠️ CORRECTIF : on regarde aussi la zone localisée du tableau (pas
+    # seulement tout le texte de l'acte). _extraire_paires_brutes sur
+    # l'acte entier peut renvoyer 0 paire (le nombre total de dates ne
+    # correspond alors plus au nombre total de grades sur l'ensemble du
+    # document, à cause d'autres dates sans rapport ailleurs — date de
+    # naissance, périodes de majoration d'ancienneté), même quand un vrai
+    # tableau existe bel et bien à un endroit précis de l'acte.
+    acte_concerne_par_avancement = bool(_extraire_paires_brutes(acte_text)) or bool(_extraire_paires_brutes(_localiser_bloc_tableau(acte_text)))
 
     # Détermine, pour chaque agent, sa liste de paires (grade, date) —
     # deux stratégies selon le cas :
@@ -847,7 +919,16 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
     for idx, (agent, etapes) in enumerate(zip(agents_acte, groupes_par_agent), start=1):
         prefixe = f"Agent {idx}" if plusieurs else "Agent"
 
-        if not etapes:
+        # ⚠️ CORRECTIF : "len(etapes) < 2", pas seulement "not etapes". Une
+        # séquence tronquée par _tronquer_a_la_premiere_incoherence() à UNE
+        # SEULE paire (ex: plusieurs échelons partagent la même date
+        # d'effet dans un acte de régularisation par majoration
+        # d'ancienneté — délai=0, donc le garde-fou coupe après la 1ère
+        # paire) reste une liste non vide ("not etapes" = False), donc ce
+        # cas passait inaperçu : la boucle plus bas "for i in range(1,
+        # len(etapes))" devient range(1, 1), qui ne s'exécute jamais —
+        # aucun check ni anomalie n'était alors généré, silence total.
+        if not etapes or len(etapes) < 2:
             if not acte_concerne_par_avancement:
                 # Aucune trace de tableau de progression nulle part dans
                 # l'acte : ce n'est pas une erreur d'extraction, cet acte ne
@@ -858,7 +939,7 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
             checks[f"{prefixe} — Délai avancement"] = "ℹ Tableau de progression non exploitable (à vérifier manuellement)"
             anomalies.append({
                 "code": code,
-                "description": f"Impossible d'extraire un tableau grade/échelon exploitable pour l'agent (matricule {agent.get('matricule')}).",
+                "description": f"Impossible d'extraire un tableau grade/échelon exploitable pour l'agent (matricule {agent.get('matricule') or 'non renseigné (identifié par date de naissance)'}).",
                 "criticite": determiner_criticite(code).value,
                 "profil_concerne": profil, "etape": etape,
                 "recommandation": "Vérifier manuellement le calcul du délai d'avancement pour cet agent.",
@@ -885,7 +966,7 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
                     "code": code,
                     "description": (
                         f"Délai incohérent (négatif ou nul) détecté pour l'agent "
-                        f"{agent.get('nom') or ''} (matricule {agent.get('matricule')}) : "
+                        f"{agent.get('nom') or ''} (matricule {agent.get('matricule') or 'non renseigné (identifié par date de naissance)'}) : "
                         f"{grade_avant} ({date_avant}) → {grade_apres} ({date_apres}). "
                         f"Cela indique probablement une erreur d'extraction du tableau, pas une vraie anomalie."
                     ),
@@ -906,7 +987,7 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
                 code = "DELAI_NON_VERIFIABLE"
                 anomalies.append({
                     "code": code,
-                    "description": f"Impossible de déterminer le délai réglementaire pour {grade_avant} → {grade_apres} (agent {agent.get('nom') or ''}, matricule {agent.get('matricule')}).",
+                    "description": f"Impossible de déterminer le délai réglementaire pour {grade_avant} → {grade_apres} (agent {agent.get('nom') or ''}, matricule {agent.get('matricule') or 'non renseigné (identifié par date de naissance)'}).",
                     "criticite": determiner_criticite(code).value,
                     "profil_concerne": profil, "etape": etape,
                     "recommandation": "Vérifier manuellement dans corps_classe_echelon.csv ou regles_metier_actes_RH.",
@@ -923,7 +1004,7 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
                     "code": code,
                     "description": (
                         f"Délai d'avancement {'incorrect' if confirme_par_table else 'à vérifier'} pour l'agent "
-                        f"{agent.get('nom') or ''} (matricule {agent.get('matricule')}) : {grade_avant} ({date_avant}) → "
+                        f"{agent.get('nom') or ''} (matricule {agent.get('matricule') or 'non renseigné (identifié par date de naissance)'}) : {grade_avant} ({date_avant}) → "
                         f"{grade_apres} ({date_apres}) = {delai_constate} an(s) constaté(s), {delai_reg} an(s) attendu(s) "
                         f"selon {regle_appliquee}."
                     ),

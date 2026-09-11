@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(get_settings().logs_dir, exist_ok=True)
 
     mode = get_settings().llm_mode
-    logger.info(f"✅ API prête ! Mode LLM : {mode}")
+    logger.info(f" API prête ! Mode LLM : {mode}")
     yield
 
 
