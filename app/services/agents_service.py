@@ -90,7 +90,7 @@ def recharger_base_agents():
 #  2. EXTRACTION DE L'IDENTITÉ DEPUIS LE TEXTE DE L'ACTE
 # ═══════════════════════════════════════════════════════════
 
-_RE_MATRICULE = re.compile(r"\b(\d{6}[A-Z])\b")
+_RE_MATRICULE = re.compile(r"\b(\d{6,9}[A-Z])\b")
 _RE_NOM_NARRATIF = re.compile(
     r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*,?\s*$"
 )
@@ -126,7 +126,15 @@ def extraire_identite_agent(acte_text: str) -> list:
         if m_date:
             date_naissance = m_date.group(1).strip()
 
-        fin_bloc = matches[i + 1].start() if i + 1 < len(matches) else min(len(acte_text), m.end() + 600)
+        # Pour le DERNIER agent (ou l'unique agent) de l'acte, aucun risque
+        # de mélanger son tableau de progression avec celui d'un autre
+        # agent puisqu'il n'y en a pas d'autre après lui — on peut donc
+        # prendre tout le reste du texte jusqu'à la fin du document,
+        # plutôt qu'une fenêtre fixe de 600 caractères qui s'est révélée
+        # insuffisante sur des actes où plusieurs articles (rémunération,
+        # affiliation, majoration d'ancienneté...) séparent le matricule
+        # du vrai tableau de progression (ex: acte de régularisation).
+        fin_bloc = matches[i + 1].start() if i + 1 < len(matches) else len(acte_text)
         bloc_progression = acte_text[m.end():fin_bloc]
 
         agents.append({
@@ -206,7 +214,7 @@ def extraire_identite_par_date_naissance(acte_text: str) -> list:
     ("Madame X, née le 03/07/1984"), soit dans un tableau ("Prénoms et
     noms | Date et lieu de naissance | ..." avec la date en toutes
     lettres, ex: "10 janvier 1999")."""
-    agents = []
+    occurrences = []  # (nom, prenom, date_naissance, position_fin)
     for debut, fin, date_naissance in _RE_DATE_NAISSANCE_TOUTES_FORMES(acte_text):
         fenetre_avant = acte_text[max(0, debut - 400):debut]
 
@@ -226,16 +234,28 @@ def extraire_identite_par_date_naissance(acte_text: str) -> list:
 
         if not nom:
             continue
+        occurrences.append((nom, prenom, date_naissance, fin))
 
-        # Évite les doublons : la même personne est souvent citée dans
-        # plusieurs articles du même acte (identité + majoration
-        # d'ancienneté + régularisation de grade, par exemple).
-        deja_present = any(a["nom"] == nom and a["date_naissance"] == date_naissance for a in agents)
-        if not deja_present:
-            agents.append({
-                "matricule": None, "nom": nom, "prenom": prenom,
-                "date_naissance": date_naissance, "bloc_progression": "",
-            })
+    # Un même agent est souvent cité plusieurs fois dans le même acte
+    # (identité + majoration d'ancienneté + régularisation de grade) — on
+    # ne garde qu'UNE entrée par personne, mais en retenant la position de
+    # sa DERNIÈRE mention : le tableau de progression se trouve presque
+    # toujours après cette dernière citation (fin de l'acte), pas après la
+    # toute première (souvent juste l'identité, en début d'acte).
+    derniere_position_par_personne = {}
+    for nom, prenom, date_naissance, fin in occurrences:
+        cle = (nom, date_naissance)
+        if cle not in derniere_position_par_personne or fin > derniere_position_par_personne[cle]["fin"]:
+            derniere_position_par_personne[cle] = {"nom": nom, "prenom": prenom, "date_naissance": date_naissance, "fin": fin}
+
+    personnes = sorted(derniere_position_par_personne.values(), key=lambda p: p["fin"])
+    agents = []
+    for i, p in enumerate(personnes):
+        fin_bloc = personnes[i + 1]["fin"] if i + 1 < len(personnes) else len(acte_text)
+        agents.append({
+            "matricule": None, "nom": p["nom"], "prenom": p["prenom"],
+            "date_naissance": p["date_naissance"], "bloc_progression": acte_text[p["fin"]:fin_bloc],
+        })
     return agents
 
 

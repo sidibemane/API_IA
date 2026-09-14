@@ -222,7 +222,7 @@ class MoteurValidationGIRAFE:
 
             # Identité agent (matricule / nom / prénom / date de naissance vs base des agents)
             try:
-                from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, verifier_delais_avancement, verifier_visa_coherent
+                from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, extraire_identite_par_date_naissance, verifier_delais_avancement, verifier_visa_coherent
                 anomalies_id, checks_id = verifier_identite_agent(
                     acte_text, etape, profil, agents_externes,
                     corps_acte=resultats_abc["infos"]["corps"],
@@ -245,6 +245,12 @@ class MoteurValidationGIRAFE:
 
                 if not est_acte_retraite:
                     agents_acte = extraire_identite_agent(acte_text)
+                    if not agents_acte:
+                        # Aucun matricule dans l'acte (cas des actes
+                        # d'ENGAGEMENT/NOMINATION/RÉGULARISATION) — repli sur
+                        # la date de naissance, comme le fait déjà
+                        # verifier_identite_agent pour l'identité.
+                        agents_acte = extraire_identite_par_date_naissance(acte_text)
                     anomalies_delai, checks_delai = verifier_delais_avancement(
                         acte_text, agents_acte,
                         resultats_abc["infos"]["statut"],
