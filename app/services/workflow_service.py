@@ -339,23 +339,49 @@ class MoteurValidationGIRAFE:
         anomalies_bloquantes = [
             a for a in anomalies if a["criticite"] == NiveauCriticite.BLOQUANT.value
         ]
+        anomalies_importantes = [
+            a for a in anomalies if a["criticite"] == NiveauCriticite.IMPORTANT.value
+        ]
+        anomalies_information = [
+            a for a in anomalies if a["criticite"] == NiveauCriticite.INFORMATION.value
+        ]
         statut = StatutEtape.REJETE.value if anomalies_bloquantes else StatutEtape.VALIDE.value
+
+        def _lister_points(liste_anomalies, avec_recommandation=False):
+            return "\n".join(
+                f"{i}. {a['description']}"
+                + (f" → Action requise : {a['recommandation']}" if avec_recommandation and a.get("recommandation") else "")
+                for i, a in enumerate(liste_anomalies, start=1)
+            )
+
+        # Détail complet de CHAQUE niveau réellement présent dans cet acte
+        # (pas juste un compte) — Bloquant en premier, puis Important, puis
+        # Information. Seul le niveau BLOQUANT affiche une recommandation
+        # d'action : c'est le seul qui empêche réellement la validation de
+        # l'acte, les autres niveaux sont indicatifs.
+        blocs_niveaux = []
+        if anomalies_bloquantes:
+            blocs_niveaux.append(
+                f"🔴 Bloquant ({len(anomalies_bloquantes)}) :\n{_lister_points(anomalies_bloquantes, avec_recommandation=True)}"
+            )
+        if anomalies_importantes:
+            blocs_niveaux.append(
+                f"🟠 Important ({len(anomalies_importantes)}) :\n{_lister_points(anomalies_importantes)}"
+            )
+        if anomalies_information:
+            blocs_niveaux.append(
+                f"🔵 Information ({len(anomalies_information)}) :\n{_lister_points(anomalies_information)}"
+            )
+        detail_niveaux = "\n\n".join(blocs_niveaux)
 
         if anomalies_bloquantes:
             liste_recommandations = [
                 a["recommandation"] for a in anomalies_bloquantes if a.get("recommandation")
             ]
-            points = "\n".join(
-                f"{i}. {a['description']}"
-                + (f" → Action requise : {a['recommandation']}" if a.get("recommandation") else "")
-                for i, a in enumerate(anomalies_bloquantes, start=1)
-            )
             message_verdict = (
-                f"❌ Cet acte ne peut pas être validé à ce stade par le profil « {profil} ». "
-                f"L'examen a révélé {len(anomalies_bloquantes)} anomalie(s) bloquante(s) nécessitant "
-                f"une correction avant toute nouvelle soumission :\n\n"
-                f"{points}\n\n"
-                f"Une fois ces corrections apportées, l'acte pourra être resoumis pour validation."
+                f"❌ Cet acte ne peut pas être validé à ce stade par le profil « {profil} ».\n\n"
+                f"{detail_niveaux}\n\n"
+                f"Une fois les anomalies bloquantes corrigées, l'acte pourra être resoumis pour validation."
             )
         else:
             liste_recommandations = []
@@ -363,6 +389,7 @@ class MoteurValidationGIRAFE:
                 f"✅ Cet acte a été examiné par le profil « {profil} » et satisfait à l'ensemble "
                 f"des exigences réglementaires vérifiées à cette étape. Aucune anomalie bloquante "
                 f"n'a été détectée."
+                + (f"\n\n{detail_niveaux}" if detail_niveaux else "")
             )
 
         resultat = {
