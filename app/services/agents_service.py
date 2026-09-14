@@ -92,7 +92,7 @@ def recharger_base_agents():
 
 _RE_MATRICULE = re.compile(r"\b(\d{6,9}[A-Z])\b")
 _RE_NOM_NARRATIF = re.compile(
-    r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*,?\s*$"
+    r"(?:Monsieur|Madame|Mademoiselle)\s+((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)"
 )
 _RE_NOM_TABLEAU = re.compile(
     r"((?:[A-ZÀ-Ü][a-zà-ÿ\-]+\s+){1,3})([A-ZÀ-Ü]{2,}(?:[\-\s][A-ZÀ-Ü]{2,})*)\s*\n?\s*$"
@@ -104,18 +104,20 @@ _RE_PREFIXE_MATRICULE = re.compile(r"matricule\s*(?:de\s*solde)?\s*n?°?\s*:?\s*
 
 
 def extraire_identite_agent(acte_text: str) -> list:
-    """Repère chaque matricule (6 chiffres + 1 lettre) dans l'acte et tente
-    d'identifier le nom/prénom juste avant, ainsi que la date de naissance
-    à proximité. Retourne une liste (un acte peut concerner plusieurs agents)."""
-    agents = []
+    """Repère chaque matricule (6 à 9 chiffres + 1 lettre) dans l'acte et
+    tente d'identifier le nom/prénom juste avant, ainsi que la date de
+    naissance à proximité. Retourne une liste (un acte peut concerner
+    plusieurs agents)."""
+    occurrences = []  # (matricule, nom, prenom, date_naissance, position_fin)
     matches = list(_RE_MATRICULE.finditer(acte_text))
-    for i, m in enumerate(matches):
+    for m in matches:
         matricule = m.group(1)
         fenetre_avant = acte_text[max(0, m.start() - 220):m.start()]
         fenetre_avant = _RE_PREFIXE_MATRICULE.sub("", fenetre_avant)
 
         nom, prenom = None, None
-        m_nom = _RE_NOM_NARRATIF.search(fenetre_avant) or _RE_NOM_TABLEAU.search(fenetre_avant)
+        occurrences_narratif = list(_RE_NOM_NARRATIF.finditer(fenetre_avant))
+        m_nom = occurrences_narratif[-1] if occurrences_narratif else _RE_NOM_TABLEAU.search(fenetre_avant)
         if m_nom:
             prenom = " ".join(m_nom.group(1).split())
             nom = m_nom.group(2).strip()
@@ -126,20 +128,55 @@ def extraire_identite_agent(acte_text: str) -> list:
         if m_date:
             date_naissance = m_date.group(1).strip()
 
+        occurrences.append((matricule, nom, prenom, date_naissance, m.end()))
+
+    # Un même agent est souvent cité PLUSIEURS FOIS dans le même acte (ex:
+    # présenté à l'article 1, puis re-cité par son matricule à l'article 2
+    # pour la régularisation de grade) — sans déduplication, chaque
+    # citation est comptée comme un agent différent, et le vrai tableau de
+    # progression (situé après la DERNIÈRE citation) se retrouve attribué
+    # à tort au "2e agent" au lieu du même agent unique. On ne garde
+    # qu'UNE entrée par matricule, en retenant la position de sa DERNIÈRE
+    # mention pour capturer correctement la zone du tableau qui suit.
+    derniere_par_matricule = {}
+    for matricule, nom, prenom, date_naissance, fin in occurrences:
+        if matricule not in derniere_par_matricule:
+            derniere_par_matricule[matricule] = {
+                "matricule": matricule, "nom": nom, "prenom": prenom,
+                "date_naissance": date_naissance, "fin": fin,
+            }
+        else:
+            existant = derniere_par_matricule[matricule]
+            # Position toujours mise à jour vers la DERNIÈRE occurrence
+            # (pour bien capturer le tableau qui la suit), mais le nom/
+            # prénom/date de naissance ne sont écrasés QUE si cette
+            # occurrence-ci les a trouvés et que l'existant ne les avait
+            # pas — une mention plus tardive peut être moins complète
+            # (ex: "Monsieur X du corps de..." trop loin du matricule
+            # pour que la regex capture le nom), sans que ce soit une
+            # perte d'information : le nom déjà trouvé avant reste valable.
+            existant["fin"] = fin
+            if not existant["nom"] and nom:
+                existant["nom"], existant["prenom"] = nom, prenom
+            if not existant["date_naissance"] and date_naissance:
+                existant["date_naissance"] = date_naissance
+
+    personnes = sorted(derniere_par_matricule.values(), key=lambda p: p["fin"])
+    agents = []
+    for i, p in enumerate(personnes):
         # Pour le DERNIER agent (ou l'unique agent) de l'acte, aucun risque
         # de mélanger son tableau de progression avec celui d'un autre
         # agent puisqu'il n'y en a pas d'autre après lui — on peut donc
         # prendre tout le reste du texte jusqu'à la fin du document,
-        # plutôt qu'une fenêtre fixe de 600 caractères qui s'est révélée
-        # insuffisante sur des actes où plusieurs articles (rémunération,
-        # affiliation, majoration d'ancienneté...) séparent le matricule
-        # du vrai tableau de progression (ex: acte de régularisation).
-        fin_bloc = matches[i + 1].start() if i + 1 < len(matches) else len(acte_text)
-        bloc_progression = acte_text[m.end():fin_bloc]
+        # plutôt qu'une fenêtre fixe qui s'est révélée insuffisante sur des
+        # actes où plusieurs articles séparent le matricule du vrai
+        # tableau de progression (ex: acte de régularisation).
+        fin_bloc = personnes[i + 1]["fin"] if i + 1 < len(personnes) else len(acte_text)
+        bloc_progression = acte_text[p["fin"]:fin_bloc]
 
         agents.append({
-            "matricule": matricule, "nom": nom, "prenom": prenom, "date_naissance": date_naissance,
-            "bloc_progression": bloc_progression,
+            "matricule": p["matricule"], "nom": p["nom"], "prenom": p["prenom"],
+            "date_naissance": p["date_naissance"], "bloc_progression": bloc_progression,
         })
     return agents
 
