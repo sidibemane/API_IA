@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import re
 import unicodedata
 from datetime import datetime
 from typing import Optional
@@ -239,9 +240,20 @@ class MoteurValidationGIRAFE:
                 # PAS un acte de retraite (un départ en retraite ne
                 # comporte jamais de calcul d'avancement de grade/échelon,
                 # peu importe le circuit détecté).
-                est_acte_retraite = "retraite" in unicodedata.normalize(
+                #
+                # La détection se limite à la ligne "Objet :" (ou, à
+                # défaut, au tout début de l'acte) — PAS à tout le corps du
+                # texte, qui peut légitimement mentionner "retraite" sans
+                # que l'acte en soit un lui-même (ex: référence standard à
+                # "l'Institution de Prévoyance Retraite du Sénégal" dans un
+                # acte de régularisation, ou une "retenue de pension de
+                # retraite" dans le calcul de la rémunération).
+                texte_normalise_retraite = unicodedata.normalize(
                     "NFKD", acte_text.lower()
                 ).encode("ascii", "ignore").decode("ascii")
+                m_objet_retraite = re.search(r"objet\s*:?\s*(.{0,150})", texte_normalise_retraite)
+                zone_objet = m_objet_retraite.group(1) if m_objet_retraite else texte_normalise_retraite[:200]
+                est_acte_retraite = "retraite" in zone_objet
 
                 if not est_acte_retraite:
                     agents_acte = extraire_identite_agent(acte_text)
