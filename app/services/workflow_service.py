@@ -140,6 +140,7 @@ class MoteurValidationGIRAFE:
         self.workflow_actuel: Optional[dict] = None
         self.anomalies_textuelles: list = []
         self.checks_textuels: dict = {}
+        self.resultats_abc_infos: dict = {}
         self.etapes_textuelles_faites: set = set()
         self.historique: list = []
         # Cache par empreinte de contenu — évite de ré-analyser un fichier
@@ -192,41 +193,74 @@ class MoteurValidationGIRAFE:
         checks = {}
 
         # ── Analyse textuelle ──
-        if config.get("analyse_textuelle") and etape not in self.etapes_textuelles_faites:
-            resultats_abc = verifier_points_abc(acte_text)
+        # NB : cette section est scindée en deux parties bien distinctes :
+        #
+        #  1) En-tête / Timbre (point A / point C) : ne dépendent QUE du
+        #     texte de l'acte, qui ne change jamais pour un acte_id donné
+        #     → mis en cache une seule fois par acte via
+        #     self.etapes_textuelles_faites, c'est du contenu figé.
+        #
+        #  2) Identité agent / Visa / Délai d'avancement : dépendent du
+        #     JSON agent_info transmis par GIRAFE À CET APPEL PRÉCIS. Si
+        #     GIRAFE corrige les informations de l'agent puis relance une
+        #     vérification sur le même acte_id, il FAUT recalculer avec
+        #     les nouvelles données — jamais réutiliser un résultat mis en
+        #     cache lors d'un appel précédent. Cette partie est donc
+        #     TOUJOURRS recalculée, à chaque appel, sans aucun cache.
+        if config.get("analyse_textuelle"):
+            if etape not in self.etapes_textuelles_faites:
+                resultats_abc = verifier_points_abc(acte_text)
 
-            # Point A
-            if not resultats_abc["point_A"]["conforme"]:
-                code = "ENTETE_NON_CONFORME"
-                anomalies.append({
-                    "code": code, "description": "En-tête non conforme",
-                    "criticite": determiner_criticite(code).value,
-                    "profil_concerne": profil, "etape": etape,
-                    "recommandation": "Corriger l'en-tête officiel.",
-                })
-                checks["En-tête officiel"] = "❌ NON CONFORME"
-            else:
-                checks["En-tête officiel"] = "✅ CONFORME"
+                anomalies_abc = []
+                checks_abc = {}
 
-            # Point C
-            if not resultats_abc["point_C"]["conforme"]:
-                code = "TIMBRE_INCORRECT"
-                anomalies.append({
-                    "code": code, "description": "Timbre incorrect",
-                    "criticite": determiner_criticite(code).value,
-                    "profil_concerne": profil, "etape": etape,
-                    "recommandation": f"Attendu : '{SIGNATAIRE_OFFICIEL}'",
-                })
-                checks["Timbre"] = "❌ NON CONFORME"
-            else:
-                checks["Timbre"] = "✅ CONFORME"
+                # Point A
+                if not resultats_abc["point_A"]["conforme"]:
+                    code = "ENTETE_NON_CONFORME"
+                    anomalies_abc.append({
+                        "code": code, "description": "En-tête non conforme",
+                        "criticite": determiner_criticite(code).value,
+                        "profil_concerne": profil, "etape": etape,
+                        "recommandation": "Corriger l'en-tête officiel.",
+                    })
+                    checks_abc["En-tête officiel"] = "❌ NON CONFORME"
+                else:
+                    checks_abc["En-tête officiel"] = "✅ CONFORME"
 
-            # Identité agent (matricule / nom / prénom / date de naissance vs base des agents)
+                # Point C
+                if not resultats_abc["point_C"]["conforme"]:
+                    code = "TIMBRE_INCORRECT"
+                    anomalies_abc.append({
+                        "code": code, "description": "Timbre incorrect",
+                        "criticite": determiner_criticite(code).value,
+                        "profil_concerne": profil, "etape": etape,
+                        "recommandation": f"Attendu : '{SIGNATAIRE_OFFICIEL}'",
+                    })
+                    checks_abc["Timbre"] = "❌ NON CONFORME"
+                else:
+                    checks_abc["Timbre"] = "✅ CONFORME"
+
+                self.etapes_textuelles_faites.add(etape)
+                # On conserve aussi les infos extraites de l'acte
+                # (corps/statut/hiérarchie) pour ne pas relancer
+                # verifier_points_abc à chaque appel — elles ne dépendent,
+                # elles non plus, que du texte de l'acte (figé).
+                self.resultats_abc_infos = resultats_abc["infos"]
+                self.anomalies_textuelles = anomalies_abc
+                self.checks_textuels = checks_abc
+
+            anomalies.extend(self.anomalies_textuelles)
+            checks.update(self.checks_textuels)
+            infos_acte = self.resultats_abc_infos
+
+            # Identité agent (matricule / nom / prénom / date de naissance
+            # vs base des agents) — TOUJOURS recalculée avec les
+            # agents_externes reçus à CET appel, jamais mise en cache.
             try:
                 from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, extraire_identite_par_date_naissance, verifier_delais_avancement, verifier_visa_coherent
                 anomalies_id, checks_id = verifier_identite_agent(
                     acte_text, etape, profil, agents_externes,
-                    corps_acte=resultats_abc["infos"]["corps"],
+                    corps_acte=infos_acte["corps"],
                 )
                 anomalies.extend(anomalies_id)
                 checks.update(checks_id)
@@ -265,23 +299,15 @@ class MoteurValidationGIRAFE:
                         agents_acte = extraire_identite_par_date_naissance(acte_text)
                     anomalies_delai, checks_delai = verifier_delais_avancement(
                         acte_text, agents_acte,
-                        resultats_abc["infos"]["statut"],
-                        resultats_abc["infos"]["hierarchie"],
-                        resultats_abc["infos"]["corps"],
+                        infos_acte["statut"],
+                        infos_acte["hierarchie"],
+                        infos_acte["corps"],
                         etape, profil,
                     )
                     anomalies.extend(anomalies_delai)
                     checks.update(checks_delai)
             except Exception as e:
                 logger.warning(f"Vérification identité/délai indisponible : {e}")
-
-            self.etapes_textuelles_faites.add(etape)
-            self.anomalies_textuelles = anomalies
-            self.checks_textuels = checks
-
-        elif config.get("analyse_textuelle"):
-            anomalies.extend(self.anomalies_textuelles)
-            checks.update(self.checks_textuels)
 
         # ── Vérification visuelle ──
         tampons_detectes = []
