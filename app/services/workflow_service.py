@@ -153,14 +153,26 @@ class MoteurValidationGIRAFE:
         """Réutilise le résultat déjà obtenu si CE fichier exact a déjà été
         analysé. Dès que le contenu du PDF change (ex: un tampon vient
         d'être ajouté), l'empreinte change aussi → nouvelle analyse
-        automatique, jamais de résultat périmé."""
+        automatique, jamais de résultat périmé.
+
+        IMPORTANT : un résultat en échec (clé "erreur" présente — panne de
+        l'API vision, quota, timeout...) n'est JAMAIS mis en cache. Un tel
+        résultat ne dit rien sur le contenu réel de l'acte (tous les
+        tampons y sont à False par défaut) ; le mettre en cache figerait
+        ce faux "aucun tampon détecté" pour toutes les étapes suivantes du
+        même acte, jusqu'à la fin de la session. On préfère retenter une
+        vraie analyse à chaque nouvel appel tant qu'aucun résultat valide
+        n'a été obtenu."""
         empreinte = hashlib.sha256(pdf_bytes).hexdigest()
         if empreinte in self.cache_vision:
             logger.info(f"♻️  Vision réutilisée depuis le cache (empreinte {empreinte[:8]}...)")
             return self.cache_vision[empreinte]
 
         resultat = analyser_visuel_acte(pdf_bytes)
-        self.cache_vision[empreinte] = resultat
+        if not resultat.get("erreur"):
+            self.cache_vision[empreinte] = resultat
+        else:
+            logger.warning(f"Analyse visuelle en échec ({resultat['erreur']}) — résultat NON mis en cache, sera retenté au prochain appel.")
         return resultat
 
     def initialiser_workflow(self, acte_text: str) -> dict:
@@ -313,6 +325,8 @@ class MoteurValidationGIRAFE:
         tampons_detectes = []
         signature_detectee = False
         numero_detecte = False
+        analyse_visuelle_indisponible = False
+        detail_erreur_visuelle = ""
 
         tampons_requis = config.get("tampons_requis", [])
         signature_requise = config.get("signature_requise", False)
@@ -321,19 +335,38 @@ class MoteurValidationGIRAFE:
         if (tampons_requis or signature_requise or numero_requis) and pdf_bytes:
             try:
                 res_visuel = self._analyser_visuel_avec_cache(pdf_bytes)
-                if res_visuel.get("tampon_DGFP"): tampons_detectes.append("DGFP")
-                if res_visuel.get("tampon_DIRSOLDE"): tampons_detectes.append("DS")
-                if res_visuel.get("tampon_DPB"): tampons_detectes.append("DPB")
-                if res_visuel.get("tampon_CF"): tampons_detectes.append("CF")
-                if res_visuel.get("tampon_DP"): tampons_detectes.append("DP")
-                signature_detectee = res_visuel.get("signature_cachet_ministre_bas", False)
-                numero_detecte = res_visuel.get("numero_acte_haut", False)
+                if res_visuel.get("erreur"):
+                    # L'analyse a échoué (panne/quota/timeout de l'API
+                    # vision) — on ne SAIT PAS si les tampons sont présents
+                    # ou non. Il ne faut surtout pas traiter ce silence
+                    # comme une absence réelle et rejeter l'acte sur cette
+                    # base : on le signale distinctement, sans bloquer.
+                    analyse_visuelle_indisponible = True
+                    detail_erreur_visuelle = res_visuel["erreur"]
+                    logger.warning(f"Analyse visuelle indisponible pour cette étape : {detail_erreur_visuelle}")
+                else:
+                    if res_visuel.get("tampon_DGFP"): tampons_detectes.append("DGFP")
+                    if res_visuel.get("tampon_DIRSOLDE"): tampons_detectes.append("DS")
+                    if res_visuel.get("tampon_DPB"): tampons_detectes.append("DPB")
+                    if res_visuel.get("tampon_CF"): tampons_detectes.append("CF")
+                    if res_visuel.get("tampon_DP"): tampons_detectes.append("DP")
+                    signature_detectee = res_visuel.get("signature_cachet_ministre_bas", False)
+                    numero_detecte = res_visuel.get("numero_acte_haut", False)
             except Exception as e:
+                analyse_visuelle_indisponible = True
+                detail_erreur_visuelle = str(e)
                 logger.error(f"Erreur vision : {e}")
 
         # Vérification tampons
         for tampon in tampons_requis:
-            if tampon in tampons_detectes:
+            if analyse_visuelle_indisponible:
+                # Ni "présent" ni "absent" : l'analyse n'a simplement pas pu
+                # se faire. On ne génère AUCUNE anomalie bloquante pour ce
+                # tampon — l'acte ne doit pas être rejeté pour une panne
+                # technique côté vision, il sera revérifié au prochain
+                # appel (le résultat en échec n'étant pas mis en cache).
+                checks[f"Tampon {tampon}"] = "⚠️ ANALYSE VISUELLE INDISPONIBLE — à revérifier"
+            elif tampon in tampons_detectes:
                 checks[f"Tampon {tampon}"] = "✅ PRÉSENT"
             else:
                 checks[f"Tampon {tampon}"] = "❌ MANQUANT"
@@ -346,9 +379,20 @@ class MoteurValidationGIRAFE:
                     "recommandation": f"Vérifier que l'étape précédente a apposé le tampon '{tampon}'.",
                 })
 
+        if analyse_visuelle_indisponible and (tampons_requis or signature_requise or numero_requis):
+            anomalies.append({
+                "code": "ANALYSE_VISUELLE_INDISPONIBLE",
+                "description": f"L'analyse visuelle (tampons/signature) n'a pas pu être réalisée pour le moment ({detail_erreur_visuelle}).",
+                "criticite": NiveauCriticite.INFORMATION.value,
+                "profil_concerne": profil, "etape": etape,
+                "recommandation": "Relancer la validation dans quelques instants — aucune décision n'a été prise sur les tampons/la signature.",
+            })
+
         # Vérification signature
         if signature_requise:
-            if signature_detectee:
+            if analyse_visuelle_indisponible:
+                checks["Signature Ministre"] = "⚠️ ANALYSE VISUELLE INDISPONIBLE — à revérifier"
+            elif signature_detectee:
                 checks["Signature Ministre"] = "✅ PRÉSENTE"
             else:
                 checks["Signature Ministre"] = "❌ MANQUANTE"
@@ -441,17 +485,23 @@ class MoteurValidationGIRAFE:
             raise ValueError("Aucun workflow initialisé")
 
         nb_etapes = len(self.workflow_actuel)
+        analyse_visuelle_finale_indisponible = False
         try:
             res_visuel = self._analyser_visuel_avec_cache(pdf_bytes)
-            tampons_finaux = []
-            if res_visuel.get("tampon_DGFP"): tampons_finaux.append("DGFP")
-            if res_visuel.get("tampon_DIRSOLDE"): tampons_finaux.append("DS")
-            if res_visuel.get("tampon_DPB"): tampons_finaux.append("DPB")
-            if res_visuel.get("tampon_CF"): tampons_finaux.append("CF")
-            if res_visuel.get("tampon_DP"): tampons_finaux.append("DP")
-            signature_finale = res_visuel.get("signature_cachet_ministre_bas", False)
-            numero_final = res_visuel.get("numero_acte_haut", False)
-        except:
+            if res_visuel.get("erreur"):
+                analyse_visuelle_finale_indisponible = True
+                tampons_finaux, signature_finale, numero_final = [], False, False
+            else:
+                tampons_finaux = []
+                if res_visuel.get("tampon_DGFP"): tampons_finaux.append("DGFP")
+                if res_visuel.get("tampon_DIRSOLDE"): tampons_finaux.append("DS")
+                if res_visuel.get("tampon_DPB"): tampons_finaux.append("DPB")
+                if res_visuel.get("tampon_CF"): tampons_finaux.append("CF")
+                if res_visuel.get("tampon_DP"): tampons_finaux.append("DP")
+                signature_finale = res_visuel.get("signature_cachet_ministre_bas", False)
+                numero_final = res_visuel.get("numero_acte_haut", False)
+        except Exception:
+            analyse_visuelle_finale_indisponible = True
             tampons_finaux, signature_finale, numero_final = [], False, False
 
         tous_tampons = sorted({
@@ -468,8 +518,14 @@ class MoteurValidationGIRAFE:
         etapes_faites = sorted({r["etape"] for r in self.historique})
         etapes_manquantes = [n for n in range(1, nb_etapes + 1) if n not in etapes_faites]
 
+        # Si l'analyse visuelle finale a échoué techniquement (panne API,
+        # timeout...), on ne peut tirer AUCUNE conclusion sur les
+        # tampons/la signature — on ne déclare donc pas l'acte non
+        # conforme sur cette seule base, pour ne pas rejeter à tort un
+        # acte qui a réellement tous ses tampons.
         conforme = (
-            not tampons_manquants and signature_finale and numero_final
+            not analyse_visuelle_finale_indisponible
+            and not tampons_manquants and signature_finale and numero_final
             and nb_bloq == 0 and not etapes_manquantes
         )
 
@@ -485,6 +541,7 @@ class MoteurValidationGIRAFE:
             "tampons_manquants_final": tampons_manquants,
             "signature_ministre_presente": signature_finale,
             "numero_acte_present": numero_final,
+            "analyse_visuelle_indisponible": analyse_visuelle_finale_indisponible,
             "nb_anomalies_bloquantes": nb_bloq,
             "nb_anomalies_importantes": nb_imp,
             "nb_anomalies_informations": nb_info,

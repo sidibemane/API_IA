@@ -286,13 +286,26 @@ def _appeler_gemini_avec_retry(url: str, headers: dict, payload: dict, tentative
             logger.info(f"Réponse Gemini vision : {resultat}")
             return resultat
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 429 and tentative <= 3:
+       
+        if e.response.status_code == 429 and tentative <= 1:
             corps = e.response.text
             match = re.search(r"retry in (\d+(?:\.\d+)?)s", corps)
             delai = float(match.group(1)) + 1 if match else 15.0
             time.sleep(delai)
             return _appeler_gemini_avec_retry(url, headers, payload, tentative + 1)
+        if e.response.status_code == 503 and tentative <= 1:
+            # Pas de délai suggéré par l'API pour un 503 → backoff simple.
+            time.sleep(5.0 * tentative)
+            return _appeler_gemini_avec_retry(url, headers, payload, tentative + 1)
         logger.error(f"Erreur API Gemini vision : {e.response.status_code} — {e.response.text}")
+        return {**REPONSE_PAR_DEFAUT, "erreur": str(e)}
+    except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as e:
+        # Coupure réseau / délai dépassé — également transitoire, même
+        # logique de retry que pour un 503 (1 seule tentative supplémentaire).
+        if tentative <= 1:
+            time.sleep(5.0 * tentative)
+            return _appeler_gemini_avec_retry(url, headers, payload, tentative + 1)
+        logger.error(f"Erreur réseau vision (après {tentative} tentatives) : {e}")
         return {**REPONSE_PAR_DEFAUT, "erreur": str(e)}
     except Exception as e:
         logger.error(f"Erreur vision : {e}")

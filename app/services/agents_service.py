@@ -580,6 +580,15 @@ def _normaliser_ref(t):
     if t is None or isinstance(t, float):
         return ""
     t = str(t).upper().strip()
+    # Uniformiser toutes les variantes d'apostrophe (guillemet courbe ’,
+    # accent grave `, etc.) vers l'apostrophe droite ASCII AVANT la
+    # translittération NFKD. Sans cela, un ’ (U+2019, très fréquent dans
+    # les libellés de corps.csv) est purement supprimé par l'encodage
+    # ASCII et FUSIONNE les deux mots qu'il séparait (ex: "L’EDUCATION"
+    # → "LEDUCATION" au lieu de "L'EDUCATION"), ce qui empêche ensuite
+    # toute correspondance avec le texte de l'acte, qui utilise
+    # normalement l'apostrophe droite '.
+    t = t.replace("’", "'").replace("‘", "'").replace("´", "'").replace("`", "'")
     t = unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode("ascii")
     return " ".join(t.split())
 
@@ -626,8 +635,24 @@ ECH_LABEL_VERS_CODE = {
 
 CPS_LIBELLE_VERS_CODES = {}
 _LIBELLES_TRIES = []
+_LIBELLES_CORE_TRIES = []
 CPS_INFOS_PAR_CODE = {}
 DUREE_LOOKUP = {}
+
+# Petits mots de liaison à ignorer lors de la comparaison "réduite" de deux
+# libellés de corps — permet de faire correspondre deux formulations
+# grammaticalement différentes du MÊME corps (ex: acte "PROFESSEURS
+# D'EDUCATION PHYSIQUE ET DU SPORT" vs base "PROFESSEURS DE L'EDUCATION
+# PHYSIQUE ET DU SPORT") SANS jamais gommer un mot porteur de sens qui
+# distingue deux corps réellement différents (ex: "SPORT" ≠ "SPORTIVE").
+_CONNECTEURS_CORPS = {"DE", "DU", "DES", "LA", "LE", "LES", "L", "D"}
+
+
+def _forme_reduite_corps(texte_norm: str) -> str:
+    texte_norm = texte_norm.replace("'", " ")
+    mots = [m for m in texte_norm.split() if m not in _CONNECTEURS_CORPS]
+    return " ".join(mots)
+
 
 if CORPS_DF is not None:
     for _, _row in CORPS_DF.iterrows():
@@ -636,7 +661,14 @@ if CORPS_DF is not None:
             if _cle and len(_cle) >= 5:
                 CPS_LIBELLE_VERS_CODES.setdefault(_cle, []).append(_row["cps_code"])
                 _LIBELLES_TRIES.append((_cle, _row["cps_code"], _row.get("cps_typecorps_code")))
+                _cle_core = _forme_reduite_corps(_cle)
+                # Seuil de 8 caractères (≥ 2 mots porteurs de sens en
+                # général) pour éviter qu'une forme réduite trop courte et
+                # trop générique ne matche n'importe quoi.
+                if _cle_core and len(_cle_core) >= 8 and _cle_core != _cle:
+                    _LIBELLES_CORE_TRIES.append((_cle_core, _row["cps_code"], _row.get("cps_typecorps_code")))
     _LIBELLES_TRIES = sorted(set(_LIBELLES_TRIES), key=lambda x: -len(x[0]))
+    _LIBELLES_CORE_TRIES = sorted(set(_LIBELLES_CORE_TRIES), key=lambda x: -len(x[0]))
     CPS_INFOS_PAR_CODE = CORPS_DF.set_index("cps_code").to_dict(orient="index")
 
 if CCE_DF is not None:
@@ -699,69 +731,22 @@ def _pretraiter_texte_corps(texte):
     return texte
 
 
-def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
-    if CORPS_DF is None:
-        return None
-    texte_norm = _normaliser_ref(_pretraiter_texte_corps(acte_text))
-    candidats = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib in texte_norm]
+# Ancrage explicite "corps des/du/de la/d' <NOM>" : c'est la formulation
+# qui désigne SANS AMBIGUÏTÉ le corps réel dans lequel l'agent est
+# nommé/titularisé/promu, par opposition à un autre nom de corps évoqué
+# ailleurs dans la même phrase à un autre titre (ex: "de la catégorie
+# d'enseignants dénommée MAITRES CONTRACTUELS ... est nommé ... dans le
+# corps des INSTITUTEURS" → c'est bien INSTITUTEURS qui doit être retenu,
+# pas MAITRES CONTRACTUELS, qui n'est ici que l'ancienne catégorie).
+_RE_ANCHOR_CORPS = re.compile(
+    r"\bCORPS\s+(?:DES|DU|DE\s+LA|D')\s+([A-Z0-9'\s\-]{3,90}?)"
+    r"(?=\s*[,.;:]|\s+HIERARCHIE\b|$)"
+)
 
-    if not candidats:
-        # Le repli par mot (ci-dessous) ne doit chercher que dans la partie
-        # OPÉRATIVE de l'acte (à partir de "ARTICLE PREMIER"/"DECIDE"/
-        # "ARRETE"), jamais dans les clauses "VU la loi..." — sinon un mot
-        # incident comme "agents" dans "aux agents non fonctionnaires" peut
-        # être confondu avec un vrai corps ("AGENTS SANITAIRES...").
-        m_debut_operatif = re.search(r"\bARTICLE\s+PREMIER\b|\bDECIDE\s*:|\bARRETE\s*:", texte_norm)
-        zone_recherche = texte_norm[m_debut_operatif.start():] if m_debut_operatif else texte_norm
 
-        hierarchies_trouvees = _HIER_RE.findall(zone_recherche)
-        tous_les_mots = zone_recherche.split()
-        indices_significatifs = [i for i, m in enumerate(tous_les_mots) if len(m) >= 5]
-
-        # Regroupe par les 2 premiers mots du libellé (pas 1 seul) — un
-        # premier mot isolé comme "INGENIEURS" est partagé par 146 corps
-        # différents dans la base, rendant le repli quasi aléatoire ; les
-        # 2 premiers mots ("INGENIEURS INFORMATICIENS") ramènent presque
-        # toujours à un seul corps précis. Le 2e mot est pris à la position
-        # SUIVANTE dans le texte réel (pas dans la liste filtrée), pour ne
-        # pas sauter un connecteur court comme "ET" ("CHAUFFEURS ET
-        # CONDUCTEURS...").
-        for i in indices_significatifs:
-            mot = tous_les_mots[i]
-            bigramme = f"{mot} {tous_les_mots[i + 1]}" if i + 1 < len(tous_les_mots) else None
-            famille = []
-            if bigramme:
-                famille = [
-                    (lib, code, typ) for lib, code, typ in _LIBELLES_TRIES
-                    if lib.startswith(bigramme)
-                ]
-            if not famille:
-                # Repli du repli : un seul mot, UNIQUEMENT si ça ne
-                # désigne qu'un seul corps possible dans toute la base
-                # (sinon trop ambigu, on ignore ce mot).
-                candidats_1mot = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib.split()[0] == mot]
-                if len(candidats_1mot) == 1:
-                    famille = candidats_1mot
-            if not famille:
-                continue
-            trouve = []
-            if hierarchies_trouvees:
-                for h in hierarchies_trouvees:
-                    for lib, code, typ in famille:
-                        if f" {h} " in f" {lib} ":
-                            trouve = [(lib, code, typ)]
-                            break
-                    if trouve:
-                        break
-            if not trouve and len(famille) == 1:
-                trouve = famille
-            if trouve:
-                candidats = trouve
-                break
-
+def _meilleur_candidat(candidats, statut):
     if not candidats:
         return None
-
     max_len = max(len(c[0]) for c in candidats)
     meilleurs = [c for c in candidats if len(c[0]) == max_len]
     if len(meilleurs) == 1:
@@ -772,10 +757,112 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
     cherche_non_fonct = statut == "NF"
     for lib, code, typ in meilleurs:
         typ = typ or ""
-        est_non_fonct = "NON_FONCT" in typ
-        if est_non_fonct == cherche_non_fonct:
+        if ("NON_FONCT" in typ) == cherche_non_fonct:
             return code
     return meilleurs[0][1]
+
+
+def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
+    if CORPS_DF is None:
+        return None
+    texte_norm_complet = _normaliser_ref(_pretraiter_texte_corps(acte_text))
+
+    # On restreint TOUJOURS la recherche à la partie OPÉRATIVE de l'acte (à
+    # partir de "ARTICLE PREMIER"/"DECIDE"/"ARRETE"), JAMAIS aux clauses
+    # "VU la loi..." — sinon un mot incident du visa (ex: "délégation de
+    # pouvoir du Président de la République") peut être confondu avec un
+    # vrai corps (il existe bel et bien un corps "PRESIDENT(S)" dans la
+    # base), alors qu'il n'a strictement rien à voir avec le corps réel de
+    # l'agent, mentionné plus loin dans le corps de l'acte.
+    m_debut_operatif = re.search(r"\bARTICLE\s+PREMIER\b|\bDECIDE\s*:|\bARRETE\s*:", texte_norm_complet)
+    texte_norm = texte_norm_complet[m_debut_operatif.start():] if m_debut_operatif else texte_norm_complet
+
+    # ── PASSE 1 : ancrage "corps des/du/de la/d' <NOM>" ──
+    # Priorité absolue : si l'acte emploie explicitement cette formulation,
+    # c'est la source la plus fiable, on ne regarde même pas le reste.
+    for m_anchor in _RE_ANCHOR_CORPS.finditer(texte_norm):
+        zone_anchor = " ".join(m_anchor.group(1).split())
+        zone_anchor_core = _forme_reduite_corps(zone_anchor)
+
+        # NB : seul "lib in zone_anchor" est testé (pas l'inverse) — on ne
+        # veut retenir qu'un corps dont le libellé complet apparaît
+        # réellement dans le texte capturé après "corps des/du/de la/d'",
+        # jamais un libellé plus long et plus spécifique dont l'acte ne
+        # cite qu'une sous-partie (ex: ne pas remonter à "INSTITUTEURS
+        # ADJOINTS NF REF" simplement parce que "INSTITUTEURS" y est inclus).
+        candidats_anchor = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib in zone_anchor]
+        code_trouve = _meilleur_candidat(candidats_anchor, statut)
+        if code_trouve:
+            return code_trouve
+
+        # Repli sur la forme réduite (sans DE/DU/DES/LA/LE/LES/apostrophes)
+        # UNIQUEMENT si l'exact n'a rien donné — permet de faire
+        # correspondre deux formulations grammaticalement différentes du
+        # même corps sans jamais gommer un mot porteur de sens.
+        candidats_anchor_core = [(lib, code, typ) for lib, code, typ in _LIBELLES_CORE_TRIES if lib in zone_anchor_core]
+        code_trouve = _meilleur_candidat(candidats_anchor_core, statut)
+        if code_trouve:
+            return code_trouve
+
+    # ── PASSE 2 : correspondance exacte n'importe où dans la zone opérative ──
+    candidats = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib in texte_norm]
+    code_trouve = _meilleur_candidat(candidats, statut)
+    if code_trouve:
+        return code_trouve
+
+    # ── PASSE 3 : correspondance "réduite" (variantes grammaticales) ──
+    texte_norm_core = _forme_reduite_corps(texte_norm)
+    candidats_core = [(lib, code, typ) for lib, code, typ in _LIBELLES_CORE_TRIES if lib in texte_norm_core]
+    code_trouve = _meilleur_candidat(candidats_core, statut)
+    if code_trouve:
+        return code_trouve
+
+    # ── PASSE 4 : repli par mots-clés (dernier recours, cas très ambigus) ──
+    hierarchies_trouvees = _HIER_RE.findall(texte_norm)
+    tous_les_mots = texte_norm.split()
+    indices_significatifs = [i for i, m in enumerate(tous_les_mots) if len(m) >= 5]
+
+    # Regroupe par les 2 premiers mots du libellé (pas 1 seul) — un
+    # premier mot isolé comme "INGENIEURS" est partagé par 146 corps
+    # différents dans la base, rendant le repli quasi aléatoire ; les
+    # 2 premiers mots ("INGENIEURS INFORMATICIENS") ramènent presque
+    # toujours à un seul corps précis. Le 2e mot est pris à la position
+    # SUIVANTE dans le texte réel (pas dans la liste filtrée), pour ne
+    # pas sauter un connecteur court comme "ET" ("CHAUFFEURS ET
+    # CONDUCTEURS...").
+    for i in indices_significatifs:
+        mot = tous_les_mots[i]
+        bigramme = f"{mot} {tous_les_mots[i + 1]}" if i + 1 < len(tous_les_mots) else None
+        famille = []
+        if bigramme:
+            famille = [
+                (lib, code, typ) for lib, code, typ in _LIBELLES_TRIES
+                if lib.startswith(bigramme)
+            ]
+        if not famille:
+            # Repli du repli : un seul mot, UNIQUEMENT si ça ne
+            # désigne qu'un seul corps possible dans toute la base
+            # (sinon trop ambigu, on ignore ce mot).
+            candidats_1mot = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib.split()[0] == mot]
+            if len(candidats_1mot) == 1:
+                famille = candidats_1mot
+        if not famille:
+            continue
+        trouve = []
+        if hierarchies_trouvees:
+            for h in hierarchies_trouvees:
+                for lib, code, typ in famille:
+                    if f" {h} " in f" {lib} ":
+                        trouve = [(lib, code, typ)]
+                        break
+                if trouve:
+                    break
+        if not trouve and len(famille) == 1:
+            trouve = famille
+        if trouve:
+            return _meilleur_candidat(trouve, statut)
+
+    return None
 
 
 def parser_grade_depart(grade_label: str):
