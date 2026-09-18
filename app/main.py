@@ -104,6 +104,19 @@ async def _traiter_une_verification(
             contenu = await fichier.read()
             acte_text = extraire_texte_fichier(contenu, fichier.filename)
             moteur.initialiser_workflow(acte_text)
+            # ⚠️ Remettre le curseur du fichier à zéro après cette LECTURE.
+            # `fichier.read()` est déjà rappelé plus bas (ligne ~135) pour
+            # obtenir `fichier_bytes` (utilisé pour l'analyse visuelle des
+            # tampons/signature). Or `UploadFile.read()` avance un curseur
+            # interne : sans ce `seek(0)`, ce 2e appel tombe pile sur la
+            # fin du flux et renvoie des bytes VIDES — d'où l'erreur
+            # aléatoire "Failed to open stream" et les tampons/signature
+            # jamais détectés, UNIQUEMENT lors du tout premier appel pour
+            # un acte_id donné (celui qui initialise le workflow et passe
+            # par cette branche). Un second essai réussissait "par hasard"
+            # simplement parce que le workflow était déjà initialisé et ne
+            # repassait plus par cette 1ère lecture.
+            await fichier.seek(0)
         else:
             raise HTTPException(400, "Fournissez acte_text ou fichier")
 

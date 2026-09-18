@@ -206,13 +206,22 @@ def extraire_infos_acte(acte: str) -> dict:
                 infos["corps"] = corps_ref
                 break
 
-    if not infos["corps"]:
-        m_corps = re.search(
-            r'([A-ZÉÈ][A-ZÉÈ\s\-]{3,40}?)\s+(?:hiérarchie\b|NF\b|REF\b|matricule\b|née\b)',
-            texte_normalise,
-        )
-        if m_corps:
-            infos["corps"] = m_corps.group(1).strip()
+    # ANCIEN 3e repli (SUPPRIMÉ) : une regex générique tentait de deviner le
+    # corps en capturant "le texte en majuscules juste avant hiérarchie/NF/
+    # REF/matricule/née". Elle s'est révélée dangereusement peu fiable sur
+    # un texte de tableau PDF extrait dans le désordre : la classe de
+    # caractères de la regex n'incluait pas l'apostrophe, donc face à
+    # "...GRADE DATE D'EFFET CHAUFFEUR NF..." (table Emploi/Hiérarchie mal
+    # linéarisée), le moteur regex reprenait la recherche juste après le
+    # "D'" et fabriquait de toutes pièces un faux corps "EFFET CHAUFFEUR" —
+    # qui n'a jamais désigné de corps réel — provoquant un rejet
+    # "Corps incohérent" totalement infondé. Plutôt que de corriger cette
+    # regex pour ce cas précis (elle resterait fragile sur d'autres mises
+    # en page de tableau), on la supprime : en l'absence de détection
+    # fiable (table de référence + liste des corps connus ci-dessus),
+    # infos["corps"] reste vide, et le contrôle en aval affiche alors
+    # explicitement "corps non détecté avec certitude — comparaison non
+    # effectuée" au lieu de comparer l'agent à un texte halluciné.
 
     # 5) STATUT
     is_nf = " NF" in infos["corps"].upper() or infos["corps"].upper().endswith("NF")

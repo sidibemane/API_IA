@@ -1045,8 +1045,19 @@ def verifier_delais_avancement(acte_text: str, agents_acte: list, statut: str, h
     # 2) Acte à UN SEUL agent : on garde l'extraction par bloc individuel,
     #    qui gère bien le cas d'un seul agent avec plusieurs échelons
     #    successifs (chaînage complet dans l'ordre).
+    # Si le texte contient la reconstruction PROPRE du tableau par position
+    # (voir extraction_service.py), les blocs par agent qu'elle produit
+    # sont fiables — pas besoin (et surtout pas prudent) de tenter la
+    # répartition par division égale : celle-ci compterait deux fois les
+    # mêmes paires (une fois dans le texte linéaire d'origine, une fois
+    # dans le bloc reconstruit), ce qui fausserait le calcul. On va donc
+    # DIRECTEMENT à l'extraction par bloc individuel, dont les bornes sont
+    # désormais ancrées sur les positions fiables de ce bloc reconstruit.
+    from app.services.extraction_service import MARQUEUR_TABLEAU_RECONSTRUIT
+    reconstruction_fiable = MARQUEUR_TABLEAU_RECONSTRUIT in acte_text
+
     groupes_par_agent = []
-    if plusieurs:
+    if plusieurs and not reconstruction_fiable:
         toutes_paires = _extraire_paires_brutes(acte_text)
         if toutes_paires and len(toutes_paires) % len(agents_acte) == 0:
             par_agent = len(toutes_paires) // len(agents_acte)
