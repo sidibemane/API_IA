@@ -6,7 +6,7 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # Gemini (vision multimodale — tampons, signature, cachet)
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    gemini_vision_model: str = os.getenv("GEMINI_VISION_MODEL", "gemini-2.5-flash")
+    gemini_vision_model: str = os.getenv("GEMINI_VISION_MODEL", "gemini-3.6-flash")
 
     # Backend vision : "gemini" (externe, rapide) ou "local" (Moondream2, open source)
     vision_backend: str = os.getenv("VISION_BACKEND", "gemini")
