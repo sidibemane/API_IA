@@ -39,8 +39,17 @@ def extraire_pages_pdf(pdf_bytes: bytes) -> list[str]:
     """Extrait la 1ère et dernière page en base64 (PNG), haute résolution."""
     import fitz
 
+    # SÉCURITÉ : Vérifier que le fichier n'est pas vide ou trop petit
+    if not pdf_bytes or len(pdf_bytes) < 100:
+        logger.warning("Fichier PDF vide ou trop petit pour être analysé.")
+        return []
+
     images_b64 = []
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except Exception as e:
+        logger.error(f"Impossible d'ouvrir le flux PDF (fichier corrompu ou protégé) : {e}")
+        return []
 
     if len(doc) >= 1:
         pix1 = doc[0].get_pixmap(dpi=150)
