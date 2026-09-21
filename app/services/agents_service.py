@@ -840,12 +840,16 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
                 if lib.startswith(bigramme)
             ]
         if not famille:
-            # Repli du repli : un seul mot, UNIQUEMENT si ça ne
-            # désigne qu'un seul corps possible dans toute la base
-            # (sinon trop ambigu, on ignore ce mot).
+            # Repli du repli : un seul mot. On garde la famille MÊME si
+            # plusieurs corps partagent ce premier mot (ex: "PREVENTIONNISTES
+            # A3/B4/C3 NF") — la désambiguïsation par hiérarchie ci-dessous
+            # (via hierarchies_trouvees, ex: "hiérarchie C3" présent dans
+            # l'acte) choisira alors le bon candidat. On ne l'accepte SANS
+            # désambiguïsation que si elle est unique (voir plus bas :
+            # `if not trouve and len(famille) == 1`), donc aucune perte de
+            # sécurité par rapport à avant.
             candidats_1mot = [(lib, code, typ) for lib, code, typ in _LIBELLES_TRIES if lib.split()[0] == mot]
-            if len(candidats_1mot) == 1:
-                famille = candidats_1mot
+            famille = candidats_1mot
         if not famille:
             continue
         trouve = []
