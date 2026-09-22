@@ -153,16 +153,13 @@ with col_titre:
     st.markdown(f"""
     <div class="header-ministere" style="margin-left:-1rem;">
       <div>
-        <h1>Administration — Vérification IA des actes RH</h1>
+        <h1>Administration  Vérification IA des actes RH</h1>
         <p>République du Sénégal · Ministère de la Fonction Publique, du Travail et de la Réforme du Service Public</p>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-st.caption(
-    " Dépose ton logo officiel dans `admin_assets/logo_ministere.png` pour qu'il "
-    "s'affiche automatiquement ici (redémarre Streamlit après)."
-)
+
 
 # ═══════════════════════════════════════════════════════════
 #  UTILITAIRES DE CHARGEMENT / SAUVEGARDE
@@ -200,7 +197,7 @@ def sauvegarder_base_agents(agents: list):
 
 page = st.sidebar.radio(
     "Navigation",
-    [" Circuits & vérifications", "👤 Base agents (secours)", " Aperçu JSON brut"],
+    [" Circuits & vérifications", " Base agents (secours)", " Aperçu JSON brut"],
 )
 
 st.sidebar.markdown("---")
@@ -285,7 +282,7 @@ if page == " Circuits & vérifications":
 
                     st.markdown("</div>", unsafe_allow_html=True)
 
-            if st.button(f"💾 Enregistrer les modifications — {NOMS_CIRCUITS.get(circuit, circuit)}", key=f"save_{circuit}"):
+            if st.button(f" Enregistrer les modifications — {NOMS_CIRCUITS.get(circuit, circuit)}", key=f"save_{circuit}"):
                 config[circuit] = etapes
                 sauvegarder_parametrage(config)
                 st.success(
@@ -299,7 +296,7 @@ if page == " Circuits & vérifications":
 
 elif page == " Base agents (secours)":
     st.info(
-        "ℹ Cette base **n'est utilisée qu'en secours**, quand GIRAFE n'envoie pas "
+        " Cette base **n'est utilisée qu'en secours**, quand GIRAFE n'envoie pas "
         "les informations de l'agent (`agent_info`) avec l'acte lors de l'appel à "
         "l'API. En usage normal, c'est GIRAFE qui fournit ces données à chaque "
         "appel — cette base sert surtout pour les tests autonomes."
@@ -319,7 +316,7 @@ elif page == " Base agents (secours)":
         key="editeur_agents",
     )
 
-    if st.button("💾 Enregistrer la base agents"):
+    if st.button(" Enregistrer la base agents"):
         nouveaux_agents = df_edite.fillna("").to_dict(orient="records")
         # On retire les lignes totalement vides ajoutées par erreur
         nouveaux_agents = [a for a in nouveaux_agents if any(str(v).strip() for v in a.values())]
@@ -335,7 +332,7 @@ else:
     config = charger_parametrage()
     st.json(config)
     st.download_button(
-        "⬇️ Télécharger parametrage_verifications.json",
+        "⬇ Télécharger parametrage_verifications.json",
         data=json.dumps(config, ensure_ascii=False, indent=2),
         file_name="parametrage_verifications.json",
         mime="application/json",

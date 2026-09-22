@@ -199,10 +199,7 @@ class MoteurValidationGIRAFE:
     def __init__(self):
         self.type_acte_detecte: Optional[TypeActe] = None
         self.workflow_actuel: Optional[dict] = None
-        self.anomalies_textuelles: list = []
-        self.checks_textuels: dict = {}
         self.resultats_abc_infos: dict = {}
-        self.etapes_textuelles_faites: set = set()
         self.historique: list = []
         # Cache par empreinte de contenu — évite de ré-analyser un fichier
         # déjà vu, MAIS relance automatiquement l'analyse dès que le
@@ -275,10 +272,18 @@ class MoteurValidationGIRAFE:
         # ── Analyse textuelle ──
         # NB : cette section est scindée en deux parties bien distinctes :
         #
-        #  1) En-tête / Timbre (point A / point C) : ne dépendent QUE du
-        #     texte de l'acte, qui ne change jamais pour un acte_id donné
-        #     → mis en cache une seule fois par acte via
-        #     self.etapes_textuelles_faites, c'est du contenu figé.
+        #  1) En-tête / Timbre (point A / point C) : recalculés à CHAQUE
+        #     appel (pas de cache). verifier_points_abc() est un simple
+        #     traitement par regex sur le texte, donc peu coûteux — et
+        #     surtout, depuis l'introduction du paramétrage admin
+        #     dynamique (verifs), le résultat dépend aussi des cases
+        #     cochées/décochées pour CETTE étape précise, qui peuvent
+        #     changer entre deux appels sur le MÊME acte_id/étape (ex:
+        #     resoumission après une correction dans l'interface admin).
+        #     Un cache ici figerait à tort le résultat de la toute
+        #     première vérification, ignorant tout changement de
+        #     configuration ultérieur — d'où l'absence volontaire de
+        #     cache sur cette partie.
         #
         #  2) Identité agent / Visa / Délai d'avancement : dépendent du
         #     JSON agent_info transmis par GIRAFE À CET APPEL PRÉCIS. Si
@@ -288,51 +293,42 @@ class MoteurValidationGIRAFE:
         #     cache lors d'un appel précédent. Cette partie est donc
         #     TOUJOURRS recalculée, à chaque appel, sans aucun cache.
         if config.get("analyse_textuelle"):
-            if etape not in self.etapes_textuelles_faites:
-                resultats_abc = verifier_points_abc(acte_text)
+            resultats_abc = verifier_points_abc(acte_text)
 
-                anomalies_abc = []
-                checks_abc = {}
+            anomalies_abc = []
+            checks_abc = {}
 
-                # Point A — actif uniquement si "en_tete" est coché côté admin
-                if verifs.get("en_tete", True):
-                    if not resultats_abc["point_A"]["conforme"]:
-                        code = "ENTETE_NON_CONFORME"
-                        anomalies_abc.append({
-                            "code": code, "description": "En-tête non conforme",
-                            "criticite": determiner_criticite(code).value,
-                            "profil_concerne": profil, "etape": etape,
-                            "recommandation": "Corriger l'en-tête officiel.",
-                        })
-                        checks_abc["En-tête officiel"] = "❌ NON CONFORME"
-                    else:
-                        checks_abc["En-tête officiel"] = "✅ CONFORME"
+            # Point A — actif uniquement si "en_tete" est coché côté admin
+            if verifs.get("en_tete", True):
+                if not resultats_abc["point_A"]["conforme"]:
+                    code = "ENTETE_NON_CONFORME"
+                    anomalies_abc.append({
+                        "code": code, "description": "En-tête non conforme",
+                        "criticite": determiner_criticite(code).value,
+                        "profil_concerne": profil, "etape": etape,
+                        "recommandation": "Corriger l'en-tête officiel.",
+                    })
+                    checks_abc["En-tête officiel"] = "❌ NON CONFORME"
+                else:
+                    checks_abc["En-tête officiel"] = "✅ CONFORME"
 
-                # Point C — actif uniquement si "timbre" est coché côté admin
-                if verifs.get("timbre", True):
-                    if not resultats_abc["point_C"]["conforme"]:
-                        code = "TIMBRE_INCORRECT"
-                        anomalies_abc.append({
-                            "code": code, "description": "Timbre incorrect",
-                            "criticite": determiner_criticite(code).value,
-                            "profil_concerne": profil, "etape": etape,
-                            "recommandation": f"Attendu : '{SIGNATAIRE_OFFICIEL}'",
-                        })
-                        checks_abc["Timbre"] = "❌ NON CONFORME"
-                    else:
-                        checks_abc["Timbre"] = "✅ CONFORME"
+            # Point C — actif uniquement si "timbre" est coché côté admin
+            if verifs.get("timbre", True):
+                if not resultats_abc["point_C"]["conforme"]:
+                    code = "TIMBRE_INCORRECT"
+                    anomalies_abc.append({
+                        "code": code, "description": "Timbre incorrect",
+                        "criticite": determiner_criticite(code).value,
+                        "profil_concerne": profil, "etape": etape,
+                        "recommandation": f"Attendu : '{SIGNATAIRE_OFFICIEL}'",
+                    })
+                    checks_abc["Timbre"] = "❌ NON CONFORME"
+                else:
+                    checks_abc["Timbre"] = "✅ CONFORME"
 
-                self.etapes_textuelles_faites.add(etape)
-                # On conserve aussi les infos extraites de l'acte
-                # (corps/statut/hiérarchie) pour ne pas relancer
-                # verifier_points_abc à chaque appel — elles ne dépendent,
-                # elles non plus, que du texte de l'acte (figé).
-                self.resultats_abc_infos = resultats_abc["infos"]
-                self.anomalies_textuelles = anomalies_abc
-                self.checks_textuels = checks_abc
-
-            anomalies.extend(self.anomalies_textuelles)
-            checks.update(self.checks_textuels)
+            self.resultats_abc_infos = resultats_abc["infos"]
+            anomalies.extend(anomalies_abc)
+            checks.update(checks_abc)
             infos_acte = self.resultats_abc_infos
 
             # Identité agent (matricule / nom / prénom / date de naissance
