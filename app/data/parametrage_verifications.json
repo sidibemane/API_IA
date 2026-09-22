@@ -1,0 +1,572 @@
+{
+  "RET": {
+    "1": {
+      "nom": "Agent de Bureau",
+      "role": "Initiation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "2": {
+      "nom": "Chef de Bureau",
+      "role": "1ère validation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "3": {
+      "nom": "Chef de Division",
+      "role": "Régularité admin",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "4": {
+      "nom": "Division / S-Visa",
+      "role": "Appose visa DGFP",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "5": {
+      "nom": "Dir. Pensions",
+      "role": "Appose tampon DP",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "6": {
+      "nom": "Dir. Solde",
+      "role": "Appose tampon DS",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "7": {
+      "nom": "Dir. Prog. Budgétaire",
+      "role": "Appose tampon DPB",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP",
+        "DS"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "8": {
+      "nom": "Contrôle Financier",
+      "role": "Appose tampon CF",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP",
+        "DS",
+        "DPB"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "9": {
+      "nom": "Dir. Fonction Publique",
+      "role": "Gestion de carrière",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "10": {
+      "nom": "SG / Dir. Cabinet",
+      "role": "Supervision",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "11": {
+      "nom": "Le Ministre",
+      "role": "Appose signature",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "12": {
+      "nom": "Secrétariat Gouv. (SGG)",
+      "role": "Conformité finale",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": true,
+      "numero_acte_requis": false
+    },
+    "13": {
+      "nom": "Numéroteur",
+      "role": "Préparation numérotation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": true,
+      "numero_acte_requis": false
+    }
+  },
+  "APAE": {
+    "1": {
+      "nom": "Agent de Bureau",
+      "role": "Initiation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "2": {
+      "nom": "Chef de Bureau",
+      "role": "1ère validation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "3": {
+      "nom": "Chef de Division",
+      "role": "Régularité admin",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "4": {
+      "nom": "Division / S-Visa",
+      "role": "Appose visa DGFP",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "5": {
+      "nom": "Dir. Fonction Publique",
+      "role": "Gestion de carrière",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "6": {
+      "nom": "SG / Dir. Cabinet",
+      "role": "Supervision",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "7": {
+      "nom": "Le Ministre",
+      "role": "Appose signature",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "8": {
+      "nom": "Secrétariat Gouv. (SGG)",
+      "role": "Conformité finale",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP"
+      ],
+      "signature_requise": true,
+      "numero_acte_requis": false
+    },
+    "9": {
+      "nom": "Numéroteur",
+      "role": "Préparation numérotation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP"
+      ],
+      "signature_requise": true,
+      "numero_acte_requis": false
+    }
+  },
+  "APAG": {
+    "1": {
+      "nom": "Agent de Bureau",
+      "role": "Initiation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "2": {
+      "nom": "Chef de Bureau",
+      "role": "1ère validation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "3": {
+      "nom": "Chef de Division",
+      "role": "Régularité admin",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "4": {
+      "nom": "Division / S-Visa",
+      "role": "Appose visa DGFP",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "5": {
+      "nom": "Dir. Solde",
+      "role": "Appose tampon DS",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "6": {
+      "nom": "Dir. Prog. Budgétaire",
+      "role": "Appose tampon DPB",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DS"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "7": {
+      "nom": "Contrôle Financier",
+      "role": "Appose tampon CF",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DS",
+        "DPB"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "8": {
+      "nom": "Dir. Fonction Publique",
+      "role": "Gestion de carrière",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "9": {
+      "nom": "SG / Dir. Cabinet",
+      "role": "Supervision",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "10": {
+      "nom": "Le Ministre",
+      "role": "Appose signature",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": false,
+      "numero_acte_requis": false
+    },
+    "11": {
+      "nom": "Secrétariat Gouv. (SGG)",
+      "role": "Conformité finale",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": true,
+      "numero_acte_requis": false
+    },
+    "12": {
+      "nom": "Numéroteur",
+      "role": "Préparation numérotation",
+      "verifications": {
+        "en_tete": true,
+        "timbre": true,
+        "identite_agent": true,
+        "visa": true,
+        "delai_avancement": true
+      },
+      "tampons_requis": [
+        "DGFP",
+        "DS",
+        "DPB",
+        "CF"
+      ],
+      "signature_requise": true,
+      "numero_acte_requis": false
+    }
+  }
+}

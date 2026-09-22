@@ -1,7 +1,9 @@
 """Service Workflow : MoteurValidationGIRAFE complet."""
 
 import hashlib
+import json
 import logging
+import os
 import re
 import unicodedata
 from datetime import datetime
@@ -106,6 +108,65 @@ REF_ENGINE_PAR_TYPE_ACTE = {
     TypeActe.RETRAITE_FONCTIONNAIRE: "RET",
 }
 
+# ═══════════════════════════════════════════════════════════
+#  PARAMÉTRAGE DYNAMIQUE DES VÉRIFICATIONS (interface admin Streamlit)
+#
+#  app/data/parametrage_verifications.json contient, pour chaque circuit
+#  (APAE/APAG/RET) et chaque étape/profil, quelles vérifications sont
+#  actives (en_tete, timbre, identite_agent, visa, delai_avancement),
+#  quels tampons sont attendus, et si signature/numéro d'acte sont requis.
+#
+#  Ce fichier est relu à CHAQUE appel de valider_etape() (pas de cache) —
+#  volontairement, pour qu'un changement fait dans l'interface admin
+#  s'applique IMMÉDIATEMENT sur la prochaine vérification, sans avoir à
+#  redémarrer l'API. Le fichier étant petit (quelques Ko), le coût de
+#  cette relecture systématique est négligeable.
+#
+#  Si le fichier est absent ou invalide, on retombe sur les valeurs par
+#  défaut codées en dur ci-dessus (WORKFLOWS_CONFIG) — l'API continue de
+#  fonctionner normalement même sans configuration admin personnalisée.
+# ═══════════════════════════════════════════════════════════
+
+def _chemin_parametrage_verifications() -> str:
+    from app.config import get_settings
+    return os.path.join(get_settings().data_dir, "parametrage_verifications.json")
+
+
+def charger_parametrage_verifications() -> dict:
+    chemin = _chemin_parametrage_verifications()
+    try:
+        with open(chemin, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.warning(f"⚠️ {chemin} introuvable/invalide ({e}) — utilisation des valeurs par défaut codées en dur.")
+        return {}
+
+
+def _config_etape_dynamique(circuit: str, numero_etape: int, config_defaut: dict) -> dict:
+    """Fusionne la config par défaut (codée en dur) d'une étape avec la
+    config admin (JSON) si elle existe pour cette étape précise — la
+    config admin a toujours priorité quand elle est présente."""
+    parametrage = charger_parametrage_verifications()
+    etape_admin = parametrage.get(circuit, {}).get(str(numero_etape))
+    if not etape_admin:
+        # Pas de config admin pour cette étape : comportement par défaut
+        # inchangé (toutes les vérifications actives, tampons codés en dur).
+        return {
+            "verifications": {
+                "en_tete": True, "timbre": True, "identite_agent": True,
+                "visa": True, "delai_avancement": True,
+            },
+            "tampons_requis": config_defaut.get("tampons_requis", []),
+            "signature_requise": config_defaut.get("signature_requise", False),
+            "numero_acte_requis": config_defaut.get("numero_acte_requis", False),
+        }
+    return {
+        "verifications": etape_admin.get("verifications", {}),
+        "tampons_requis": etape_admin.get("tampons_requis", config_defaut.get("tampons_requis", [])),
+        "signature_requise": etape_admin.get("signature_requise", config_defaut.get("signature_requise", False)),
+        "numero_acte_requis": etape_admin.get("numero_acte_requis", config_defaut.get("numero_acte_requis", False)),
+    }
+
 CODES_BLOQUANTS = {
     "ENTETE_NON_CONFORME",
     "SIGNATURE_MINISTRE_MANQUANTE", "NUMERO_ACTE_MANQUANT", "ERREUR_LECTURE",
@@ -204,6 +265,13 @@ class MoteurValidationGIRAFE:
         anomalies = []
         checks = {}
 
+        # Config admin dynamique pour CETTE étape précise (relue à chaque
+        # appel — voir _config_etape_dynamique ci-dessus) : quelles
+        # vérifications sont actives, quels tampons sont attendus.
+        circuit = REF_ENGINE_PAR_TYPE_ACTE.get(self.type_acte_detecte)
+        cfg_dyn = _config_etape_dynamique(circuit, etape, config)
+        verifs = cfg_dyn["verifications"]
+
         # ── Analyse textuelle ──
         # NB : cette section est scindée en deux parties bien distinctes :
         #
@@ -226,31 +294,33 @@ class MoteurValidationGIRAFE:
                 anomalies_abc = []
                 checks_abc = {}
 
-                # Point A
-                if not resultats_abc["point_A"]["conforme"]:
-                    code = "ENTETE_NON_CONFORME"
-                    anomalies_abc.append({
-                        "code": code, "description": "En-tête non conforme",
-                        "criticite": determiner_criticite(code).value,
-                        "profil_concerne": profil, "etape": etape,
-                        "recommandation": "Corriger l'en-tête officiel.",
-                    })
-                    checks_abc["En-tête officiel"] = "❌ NON CONFORME"
-                else:
-                    checks_abc["En-tête officiel"] = "✅ CONFORME"
+                # Point A — actif uniquement si "en_tete" est coché côté admin
+                if verifs.get("en_tete", True):
+                    if not resultats_abc["point_A"]["conforme"]:
+                        code = "ENTETE_NON_CONFORME"
+                        anomalies_abc.append({
+                            "code": code, "description": "En-tête non conforme",
+                            "criticite": determiner_criticite(code).value,
+                            "profil_concerne": profil, "etape": etape,
+                            "recommandation": "Corriger l'en-tête officiel.",
+                        })
+                        checks_abc["En-tête officiel"] = "❌ NON CONFORME"
+                    else:
+                        checks_abc["En-tête officiel"] = "✅ CONFORME"
 
-                # Point C
-                if not resultats_abc["point_C"]["conforme"]:
-                    code = "TIMBRE_INCORRECT"
-                    anomalies_abc.append({
-                        "code": code, "description": "Timbre incorrect",
-                        "criticite": determiner_criticite(code).value,
-                        "profil_concerne": profil, "etape": etape,
-                        "recommandation": f"Attendu : '{SIGNATAIRE_OFFICIEL}'",
-                    })
-                    checks_abc["Timbre"] = "❌ NON CONFORME"
-                else:
-                    checks_abc["Timbre"] = "✅ CONFORME"
+                # Point C — actif uniquement si "timbre" est coché côté admin
+                if verifs.get("timbre", True):
+                    if not resultats_abc["point_C"]["conforme"]:
+                        code = "TIMBRE_INCORRECT"
+                        anomalies_abc.append({
+                            "code": code, "description": "Timbre incorrect",
+                            "criticite": determiner_criticite(code).value,
+                            "profil_concerne": profil, "etape": etape,
+                            "recommandation": f"Attendu : '{SIGNATAIRE_OFFICIEL}'",
+                        })
+                        checks_abc["Timbre"] = "❌ NON CONFORME"
+                    else:
+                        checks_abc["Timbre"] = "✅ CONFORME"
 
                 self.etapes_textuelles_faites.add(etape)
                 # On conserve aussi les infos extraites de l'acte
@@ -268,22 +338,28 @@ class MoteurValidationGIRAFE:
             # Identité agent (matricule / nom / prénom / date de naissance
             # vs base des agents) — TOUJOURS recalculée avec les
             # agents_externes reçus à CET appel, jamais mise en cache.
+            # Actif uniquement si "identite_agent" est coché côté admin.
             try:
                 from app.services.agents_service import verifier_identite_agent, extraire_identite_agent, extraire_identite_par_date_naissance, verifier_delais_avancement, verifier_visa_coherent
-                anomalies_id, checks_id = verifier_identite_agent(
-                    acte_text, etape, profil, agents_externes,
-                    corps_acte=infos_acte["corps"],
-                )
-                anomalies.extend(anomalies_id)
-                checks.update(checks_id)
+
+                if verifs.get("identite_agent", True):
+                    anomalies_id, checks_id = verifier_identite_agent(
+                        acte_text, etape, profil, agents_externes,
+                        corps_acte=infos_acte["corps"],
+                    )
+                    anomalies.extend(anomalies_id)
+                    checks.update(checks_id)
 
                 # Cohérence du visa (loi/décret cité) vs vrai statut du corps
-                anomalies_visa, checks_visa = verifier_visa_coherent(acte_text, etape, profil)
-                anomalies.extend(anomalies_visa)
-                checks.update(checks_visa)
+                # — actif uniquement si "visa" est coché côté admin.
+                if verifs.get("visa", True):
+                    anomalies_visa, checks_visa = verifier_visa_coherent(acte_text, etape, profil)
+                    anomalies.extend(anomalies_visa)
+                    checks.update(checks_visa)
 
-                # Délai d'avancement grade/échelon — UNIQUEMENT si ce n'est
-                # PAS un acte de retraite (un départ en retraite ne
+                # Délai d'avancement grade/échelon — actif uniquement si
+                # "delai_avancement" est coché côté admin, ET UNIQUEMENT si
+                # ce n'est PAS un acte de retraite (un départ en retraite ne
                 # comporte jamais de calcul d'avancement de grade/échelon,
                 # peu importe le circuit détecté).
                 #
@@ -294,30 +370,31 @@ class MoteurValidationGIRAFE:
                 # "l'Institution de Prévoyance Retraite du Sénégal" dans un
                 # acte de régularisation, ou une "retenue de pension de
                 # retraite" dans le calcul de la rémunération).
-                texte_normalise_retraite = unicodedata.normalize(
-                    "NFKD", acte_text.lower()
-                ).encode("ascii", "ignore").decode("ascii")
-                m_objet_retraite = re.search(r"objet\s*:?\s*(.{0,150})", texte_normalise_retraite)
-                zone_objet = m_objet_retraite.group(1) if m_objet_retraite else texte_normalise_retraite[:200]
-                est_acte_retraite = "retraite" in zone_objet
+                if verifs.get("delai_avancement", True):
+                    texte_normalise_retraite = unicodedata.normalize(
+                        "NFKD", acte_text.lower()
+                    ).encode("ascii", "ignore").decode("ascii")
+                    m_objet_retraite = re.search(r"objet\s*:?\s*(.{0,150})", texte_normalise_retraite)
+                    zone_objet = m_objet_retraite.group(1) if m_objet_retraite else texte_normalise_retraite[:200]
+                    est_acte_retraite = "retraite" in zone_objet
 
-                if not est_acte_retraite:
-                    agents_acte = extraire_identite_agent(acte_text)
-                    if not agents_acte:
-                        # Aucun matricule dans l'acte (cas des actes
-                        # d'ENGAGEMENT/NOMINATION/RÉGULARISATION) — repli sur
-                        # la date de naissance, comme le fait déjà
-                        # verifier_identite_agent pour l'identité.
-                        agents_acte = extraire_identite_par_date_naissance(acte_text)
-                    anomalies_delai, checks_delai = verifier_delais_avancement(
-                        acte_text, agents_acte,
-                        infos_acte["statut"],
-                        infos_acte["hierarchie"],
-                        infos_acte["corps"],
-                        etape, profil,
-                    )
-                    anomalies.extend(anomalies_delai)
-                    checks.update(checks_delai)
+                    if not est_acte_retraite:
+                        agents_acte = extraire_identite_agent(acte_text)
+                        if not agents_acte:
+                            # Aucun matricule dans l'acte (cas des actes
+                            # d'ENGAGEMENT/NOMINATION/RÉGULARISATION) — repli sur
+                            # la date de naissance, comme le fait déjà
+                            # verifier_identite_agent pour l'identité.
+                            agents_acte = extraire_identite_par_date_naissance(acte_text)
+                        anomalies_delai, checks_delai = verifier_delais_avancement(
+                            acte_text, agents_acte,
+                            infos_acte["statut"],
+                            infos_acte["hierarchie"],
+                            infos_acte["corps"],
+                            etape, profil,
+                        )
+                        anomalies.extend(anomalies_delai)
+                        checks.update(checks_delai)
             except Exception as e:
                 logger.warning(f"Vérification identité/délai indisponible : {e}")
 
@@ -328,9 +405,12 @@ class MoteurValidationGIRAFE:
         analyse_visuelle_indisponible = False
         detail_erreur_visuelle = ""
 
-        tampons_requis = config.get("tampons_requis", [])
-        signature_requise = config.get("signature_requise", False)
-        numero_requis = config.get("numero_acte_requis", False)
+        # Tampons/signature/numéro attendus : viennent de la config admin
+        # dynamique si elle existe pour cette étape, sinon des valeurs par
+        # défaut codées en dur (voir _config_etape_dynamique).
+        tampons_requis = cfg_dyn["tampons_requis"]
+        signature_requise = cfg_dyn["signature_requise"]
+        numero_requis = cfg_dyn["numero_acte_requis"]
 
         if (tampons_requis or signature_requise or numero_requis) and pdf_bytes:
             try:
