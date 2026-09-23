@@ -221,18 +221,22 @@ async def valider_etape_masse_api(
             "d'étape différents d'un acte à l'autre du même lot)."
         ),
     ),
-    agents_info: list[str] = Form(
+    agents_fichiers: list[UploadFile] = File(
         None,
         description=(
-            "Un JSON agent_info par acte, dans le même ordre que 'fichiers'. "
-            "Optionnel : mettez une chaîne vide '' pour un acte donné si aucune "
-            "info agent n'est disponible pour lui précisément."
+            "Un FICHIER JSON par acte (contenant les infos de l'agent : "
+            "matricule, nom, prenom, date_naissance, corps, grade, hierarchie), "
+            "dans le même ordre que 'fichiers'. Optionnel dans l'ensemble ; si "
+            "fourni, il doit y en avoir un par acte — envoyez un fichier JSON "
+            "vide (ou contenant '{}') pour un acte donné si aucune info agent "
+            "n'est disponible pour lui précisément."
         ),
     ),
 ):
     """Vérifie PLUSIEURS actes en une seule requête, pour la même étape/le
     même profil — utile pour un traitement en masse (ex: un agent GIRAFE
-    reçoit 20 actes à valider pour 'Dir. Solde' d'un coup).
+    reçoit 20 actes à valider pour 'Dir. Solde' d'un coup, accompagnés
+    chacun de leur propre fichier JSON d'infos agent).
 
     Chaque acte reste isolé des autres (voir /workflow/valider) : si l'un
     des fichiers échoue, les autres continuent d'être traités normalement —
@@ -244,8 +248,8 @@ async def valider_etape_masse_api(
     nb = len(fichiers)
     if len(acte_ids) != nb:
         raise HTTPException(400, f"{nb} fichier(s) mais {len(acte_ids)} acte_id(s) — il en faut autant des deux côtés.")
-    if agents_info and len(agents_info) not in (0, nb):
-        raise HTTPException(400, f"{nb} fichier(s) mais {len(agents_info)} agent_info(s) — il en faut autant des deux côtés, ou aucun.")
+    if agents_fichiers and len(agents_fichiers) not in (0, nb):
+        raise HTTPException(400, f"{nb} fichier(s) d'acte mais {len(agents_fichiers)} fichier(s) JSON agent — il en faut autant des deux côtés, ou aucun.")
 
     resultats = []
     nb_valides = 0
@@ -255,7 +259,14 @@ async def valider_etape_masse_api(
     for i in range(nb):
         acte_id = acte_ids[i]
         fichier = fichiers[i]
-        agent_info = agents_info[i] if agents_info and agents_info[i] else None
+
+        agent_info = None
+        if agents_fichiers:
+            agent_fichier = agents_fichiers[i]
+            if agent_fichier and agent_fichier.filename:
+                contenu_json = await agent_fichier.read()
+                texte_json = contenu_json.decode("utf-8").strip() if contenu_json else ""
+                agent_info = texte_json or None
 
         try:
             resultat = await _traiter_une_verification(etape, acte_id, None, fichier, agent_info, profil)
