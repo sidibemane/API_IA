@@ -11,7 +11,6 @@ calcul de délai d'avancement dans les résultats de l'API.
 """
 
 import difflib
-import json
 import logging
 import os
 import re
@@ -53,37 +52,6 @@ def _normaliser_date(date_str) -> str:
 
 def _construire_index_matricule(base_agents: list) -> dict:
     return {_normaliser_texte_identite(a.get("matricule")): a for a in base_agents if a.get("matricule")}
-
-
-def _charger_base_agents() -> list:
-    settings = get_settings()
-    chemin = os.path.join(settings.data_dir, "base_agents.json")
-    try:
-        with open(chemin, "r", encoding="utf-8") as f:
-            base = json.load(f)
-        if not isinstance(base, list):
-            logger.error(f"{chemin} doit contenir une LISTE d'agents — base ignorée.")
-            return []
-        logger.info(f"✅ Base agents chargée : {len(base)} agent(s) depuis {chemin}")
-        return base
-    except FileNotFoundError:
-        logger.warning(f"⚠️ {chemin} introuvable — vérification identité désactivée (aucun agent en base).")
-        return []
-    except json.JSONDecodeError as e:
-        logger.error(f"⚠️ {chemin} contient du JSON invalide : {e} — vérification identité désactivée.")
-        return []
-
-
-BASE_AGENTS = _charger_base_agents()
-INDEX_AGENTS_PAR_MATRICULE = _construire_index_matricule(BASE_AGENTS)
-
-
-def recharger_base_agents():
-    """Permet de recharger la base sans redémarrer l'API (ex: après mise à jour du fichier)."""
-    global BASE_AGENTS, INDEX_AGENTS_PAR_MATRICULE
-    BASE_AGENTS = _charger_base_agents()
-    INDEX_AGENTS_PAR_MATRICULE = _construire_index_matricule(BASE_AGENTS)
-    return len(BASE_AGENTS)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -304,16 +272,16 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
     """Extrait le/les agent(s) de l'acte, les recherche par matricule, puis
     compare nom / prénom / date de naissance / corps.
 
-    agents_externes : si fourni (liste de dicts au format de base_agents.json,
-    envoyée par GIRAFE à chaque appel), c'est CETTE liste qui sert de source
-    de vérité — pas le fichier local base_agents.json. Le fichier local ne
-    sert que de repli pour les tests autonomes (dashboard), quand aucune
-    donnée n'est fournie par l'appelant.
+    agents_externes : liste de dicts (matricule, nom, prenom, date_naissance,
+    corps, grade, hierarchie) fournie par l'appelant (GIRAFE) à cet appel
+    précis — c'est l'UNIQUE source de vérité utilisée ici. Il n'y a plus de
+    base agents locale de repli : si agents_externes est vide/absent, la
+    vérification d'identité est simplement ignorée pour cet acte.
 
     corps_acte : le corps déjà extrait du TEXTE de l'acte par
     regles_service.extraire_infos_acte() — comparé au corps déclaré dans
-    agent_info/base_agents.json, pour détecter une incohérence (ex: l'acte
-    dit "Professeurs" mais la fiche agent dit "Médecins").
+    agent_info, pour détecter une incohérence (ex: l'acte dit "Professeurs"
+    mais la fiche agent dit "Médecins").
 
     Retourne (anomalies: list[dict], checks: dict) — même format que
     verifier_points_abc, pour fusion directe dans workflow_service."""
@@ -322,18 +290,12 @@ def verifier_identite_agent(acte_text: str, etape: int, profil: str, agents_exte
     anomalies = []
     checks = {}
 
-    if agents_externes:
-        base_a_utiliser = agents_externes
-        index_a_utiliser = _construire_index_matricule(agents_externes)
-        source = "fournie par l'appelant"
-    else:
-        base_a_utiliser = BASE_AGENTS
-        index_a_utiliser = INDEX_AGENTS_PAR_MATRICULE
-        source = "locale (base_agents.json)"
-
-    if not base_a_utiliser:
-        checks["Identification agent(s)"] = f"ℹ Aucune base d'agents disponible ({source} vide)"
+    if not agents_externes:
+        checks["Identification agent(s)"] = "ℹ Aucune information agent fournie par l'appelant (GIRAFE) — vérification identité non effectuée."
         return anomalies, checks
+
+    base_a_utiliser = agents_externes
+    index_a_utiliser = _construire_index_matricule(agents_externes)
 
     agents_acte = extraire_identite_agent(acte_text)
     mode_identification = "matricule"

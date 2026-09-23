@@ -186,8 +186,8 @@ async def valider_etape_api(
             "JSON (fourni par GIRAFE) décrivant le/les agent(s) concerné(s) "
             "par cet acte — objet unique ou liste d'objets, avec les champs : "
             "matricule, nom, prenom, date_naissance, corps, grade, hierarchie. "
-            "Si absent, l'API se rabat sur sa base de test locale (usage "
-            "développement uniquement)."
+            "Si absent, la vérification d'identité de l'agent est simplement "
+            "ignorée pour cet acte (aucune base de repli)."
         ),
     ),
 ):
