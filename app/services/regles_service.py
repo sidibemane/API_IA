@@ -39,21 +39,33 @@ _REF_ENGINE_VERS_TYPE_ACTE = {
 }
 
 _PARAMETRAGE_WORKFLOW_INDEX: dict = {}  # (nature_normalisee, type_acte_int) -> "avancement_echelon" / "autre" / "retraite_fonctionnaire"
+_FICHIER_PARAMETRAGE_WORKFLOW = "parametrage_type_acte_workflow.csv"
+_SIGNATURE_PARAMETRAGE_WORKFLOW = None
+
+
+def _dossier_data() -> str:
+    try:
+        from app.config import get_settings
+        return get_settings().data_dir
+    except Exception:
+        return os.getenv("DATA_DIR", "./app/data")
 
 
 def _charger_parametrage_workflow():
-    """Charge parametrage_type_acte_workflow.csv en mémoire, une seule
-    fois au démarrage. Si le fichier est absent, on continue sans lui —
-    la détection retombe alors entièrement sur les mots-clés (repli)."""
+    """Charge parametrage_type_acte_workflow.csv en mémoire. Rappelée
+    automatiquement dès que le fichier change (modification depuis
+    l'interface admin) — voir _recharger_parametrage_workflow_si_modifie.
+    Si le fichier est absent, on continue sans lui — la détection retombe
+    alors entièrement sur les mots-clés (repli)."""
     global _PARAMETRAGE_WORKFLOW_INDEX
     try:
-        chemin = os.path.join(os.getenv("DATA_DIR", "./app/data"), "parametrage_type_acte_workflow.csv")
-        df = pd.read_csv(chemin)
+        chemin = os.path.join(_dossier_data(), _FICHIER_PARAMETRAGE_WORKFLOW)
+        df = pd.read_csv(chemin, dtype=str, keep_default_na=False)
         index = {}
         for _, ligne in df.iterrows():
             nature_norm = str(ligne["nature"]).strip().upper()
             try:
-                type_acte_int = int(ligne["type_acte"])
+                type_acte_int = int(float(ligne["type_acte"]))
             except (TypeError, ValueError):
                 continue
             ref_engine = str(ligne["ref_engine"]).strip().upper()
@@ -67,7 +79,18 @@ def _charger_parametrage_workflow():
         _PARAMETRAGE_WORKFLOW_INDEX = {}
 
 
-_charger_parametrage_workflow()
+def _recharger_parametrage_workflow_si_modifie():
+    global _SIGNATURE_PARAMETRAGE_WORKFLOW
+    from app.services.referentiel_service import signature_fichiers
+    signature = signature_fichiers([_FICHIER_PARAMETRAGE_WORKFLOW], _dossier_data())
+    if signature != _SIGNATURE_PARAMETRAGE_WORKFLOW:
+        if _SIGNATURE_PARAMETRAGE_WORKFLOW is not None:
+            logger.info("🔄 Paramétrage type_acte → circuit modifié — rechargement à chaud.")
+        _charger_parametrage_workflow()
+        _SIGNATURE_PARAMETRAGE_WORKFLOW = signature
+
+
+_recharger_parametrage_workflow_si_modifie()
 
 
 def detecter_type_acte_par_parametrage(nature: str, type_acte) -> str:
@@ -76,10 +99,11 @@ def detecter_type_acte_par_parametrage(nature: str, type_acte) -> str:
     couple n'est pas fourni ou n'est pas trouvé dans la table — dans ce
     cas, l'appelant doit se rabattre sur la détection par mots-clés
     (detecter_type_acte, plus bas)."""
-    if not nature or type_acte is None:
+    if not nature or type_acte is None or str(type_acte).strip() == "":
         return None
+    _recharger_parametrage_workflow_si_modifie()
     try:
-        type_acte_int = int(type_acte)
+        type_acte_int = int(float(type_acte))
     except (TypeError, ValueError):
         return None
     nature_norm = str(nature).strip().upper()
@@ -178,10 +202,13 @@ def extraire_infos_acte(acte: str) -> dict:
     # cette table couvre l'intégralité des corps officiels de la fonction
     # publique, quel que soit le corps mentionné dans l'acte.
     try:
-        from app.services.agents_service import detecter_corps_depuis_texte, CPS_INFOS_PAR_CODE  # import différé (anti-cycle)
-        code_corps = detecter_corps_depuis_texte(acte)
+        # Import du MODULE (et non de CPS_INFOS_PAR_CODE directement) :
+        # la table peut être rechargée à chaud pendant l'appel à
+        # detecter_corps_depuis_texte — on relit donc l'attribut APRÈS.
+        from app.services import agents_service as _agents  # import différé (anti-cycle)
+        code_corps = _agents.detecter_corps_depuis_texte(acte)
         if code_corps:
-            infos["corps"] = CPS_INFOS_PAR_CODE.get(code_corps, {}).get("cps_libelle", "")
+            infos["corps"] = _agents.CPS_INFOS_PAR_CODE.get(code_corps, {}).get("cps_libelle", "")
     except Exception as e:
         logger.warning(f"Détection du corps via la table de référence indisponible ({e}) — repli sur l'ancienne méthode.")
 

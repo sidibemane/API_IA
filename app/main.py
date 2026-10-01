@@ -66,14 +66,17 @@ def poser_question_rag(req: RAGQuestionRequest):
 def initialiser_workflow_api(
     acte_id: str = Form(...),
     acte_text: str = Form(...),
+    nature: str = Form(None, description="Nature GIRAFE (ARRETE / DECISION / DECIDE) — facultatif."),
+    type_acte: str = Form(None, description="Code type d'acte GIRAFE — facultatif."),
 ):
     from app.services.workflow_service import get_moteur
     moteur = get_moteur(acte_id)
-    return moteur.initialiser_workflow(acte_text)
+    return moteur.initialiser_workflow(acte_text, nature=nature, type_acte=type_acte)
 
 
 async def _traiter_une_verification(
     etape, acte_id: str, acte_text: str, fichier: UploadFile, agent_info: str, profil: str = None,
+    nature: str = None, type_acte: str = None,
 ) -> dict:
     """Logique de vérification pour UN acte, réutilisée par l'endpoint
     unitaire (/workflow/valider) et l'endpoint en masse
@@ -99,11 +102,11 @@ async def _traiter_une_verification(
 
     if moteur.workflow_actuel is None:
         if acte_text:
-            moteur.initialiser_workflow(acte_text)
+            moteur.initialiser_workflow(acte_text, nature=nature, type_acte=type_acte)
         elif fichier:
             contenu = await fichier.read()
             acte_text = extraire_texte_fichier(contenu, fichier.filename)
-            moteur.initialiser_workflow(acte_text)
+            moteur.initialiser_workflow(acte_text, nature=nature, type_acte=type_acte)
             # ⚠️ Remettre le curseur du fichier à zéro après cette LECTURE.
             # `fichier.read()` est déjà rappelé plus bas (ligne ~135) pour
             # obtenir `fichier_bytes` (utilisé pour l'analyse visuelle des
@@ -190,9 +193,18 @@ async def valider_etape_api(
             "ignorée pour cet acte (aucune base de repli)."
         ),
     ),
+    nature: str = Form(
+        None,
+        description=(
+            "Nature GIRAFE de l'acte (ARRETE / DECISION / DECIDE) — facultatif. "
+            "Avec 'type_acte', permet de lire le circuit dans la table "
+            "parametrage_type_acte_workflow.csv (modifiable dans l'interface admin)."
+        ),
+    ),
+    type_acte: str = Form(None, description="Code numérique du type d'acte GIRAFE — facultatif, voir 'nature'."),
 ):
     try:
-        return await _traiter_une_verification(etape, acte_id, acte_text, fichier, agent_info, profil)
+        return await _traiter_une_verification(etape, acte_id, acte_text, fichier, agent_info, profil, nature, type_acte)
     except HTTPException:
         raise
     except ValueError as e:
@@ -340,6 +352,32 @@ async def extraire_texte_api(fichier: UploadFile = File(...)):
     contenu = await fichier.read()
     texte = extraire_texte_fichier(contenu, fichier.filename)
     return {"nom_fichier": fichier.filename, "nb_caracteres": len(texte), "texte": texte}
+
+
+# ═══════════════════════════════════════════════════════════
+#  RÉFÉRENTIEL DYNAMIQUE (interface admin)
+#  Les tables sont rechargées automatiquement dès qu'un fichier change ;
+#  ces endpoints servent à CONSULTER ce que l'API a réellement chargé, ou
+#  à forcer un rechargement immédiat.
+# ═══════════════════════════════════════════════════════════
+
+@app.get("/admin/referentiel")
+def etat_referentiel_api():
+    from app.services.agents_service import etat_referentiel
+    from app.services import regles_service
+    etat = etat_referentiel()
+    regles_service._recharger_parametrage_workflow_si_modifie()
+    etat["nb_types_acte_parametres"] = len(regles_service._PARAMETRAGE_WORKFLOW_INDEX)
+    return etat
+
+
+@app.post("/admin/referentiel/recharger")
+def recharger_referentiel_api():
+    from app.services.agents_service import recharger_referentiel_si_modifie, etat_referentiel
+    from app.services import regles_service
+    recharger_referentiel_si_modifie(force=True)
+    regles_service._charger_parametrage_workflow()
+    return {"message": "Référentiel rechargé", **etat_referentiel()}
 
 
 @app.post("/regles/verifier")

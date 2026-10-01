@@ -14,7 +14,9 @@ import difflib
 import logging
 import os
 import re
+import threading
 import unicodedata
+from datetime import datetime
 
 import pandas as pd
 
@@ -458,6 +460,7 @@ def verifier_visa_coherent(acte_text: str, etape: int, profil: str) -> tuple:
     anomalies = []
     checks = {}
 
+    recharger_referentiel_si_modifie()
     if CORPS_DF is None:
         return anomalies, checks
 
@@ -584,16 +587,23 @@ def _charger_tables_reference():
     return corps_df, classe_df, echelon_df, cce_df
 
 
-CORPS_DF, CLASSE_DF, ECHELON_DF, CCE_DF = _charger_tables_reference()
+CORPS_DF = CLASSE_DF = ECHELON_DF = CCE_DF = None
 
-CLS_LABEL_VERS_CODE = {
+# Correspondances « sigle dans l'acte » → code de la table. Valeurs PAR
+# DÉFAUT uniquement : elles sont désormais reconstruites à partir de la
+# colonne description de classe.csv / echelon.csv (ex : "1CL" → "1_SG"),
+# pour qu'une nouvelle classe ajoutée dans l'interface admin soit reconnue
+# sans toucher au code.
+_CLS_LABEL_VERS_CODE_DEFAUT = {
     "1CL": "1_SG", "2CL": "2_SG", "3CL": "3_SG", "4CL": "4_SG",
     "5CL": "5_SG", "6CL": "6_SG",
     "CEX": "7_SG", "PPL CEX": "8_SG", "PPL": "9_SG",
 }
-ECH_LABEL_VERS_CODE = {
+_ECH_LABEL_VERS_CODE_DEFAUT = {
     "1ECH": "1_SG", "2ECH": "2_SG", "3ECH": "3_SG", "4ECH": "4_SG",
 }
+CLS_LABEL_VERS_CODE = dict(_CLS_LABEL_VERS_CODE_DEFAUT)
+ECH_LABEL_VERS_CODE = dict(_ECH_LABEL_VERS_CODE_DEFAUT)
 
 CPS_LIBELLE_VERS_CODES = {}
 _LIBELLES_TRIES = []
@@ -616,27 +626,69 @@ def _forme_reduite_corps(texte_norm: str) -> str:
     return " ".join(mots)
 
 
-if CORPS_DF is not None:
-    for _, _row in CORPS_DF.iterrows():
-        for _lib in (_row.get("cps_libelle"), _row.get("cps_libelle_singulier")):
-            _cle = _normaliser_ref(_lib)
-            if _cle and len(_cle) >= 5:
-                CPS_LIBELLE_VERS_CODES.setdefault(_cle, []).append(_row["cps_code"])
-                _LIBELLES_TRIES.append((_cle, _row["cps_code"], _row.get("cps_typecorps_code")))
-                _cle_core = _forme_reduite_corps(_cle)
-                # Seuil de 8 caractères (≥ 2 mots porteurs de sens en
-                # général) pour éviter qu'une forme réduite trop courte et
-                # trop générique ne matche n'importe quoi.
-                if _cle_core and len(_cle_core) >= 8 and _cle_core != _cle:
-                    _LIBELLES_CORE_TRIES.append((_cle_core, _row["cps_code"], _row.get("cps_typecorps_code")))
-    _LIBELLES_TRIES = sorted(set(_LIBELLES_TRIES), key=lambda x: -len(x[0]))
-    _LIBELLES_CORE_TRIES = sorted(set(_LIBELLES_CORE_TRIES), key=lambda x: -len(x[0]))
-    CPS_INFOS_PAR_CODE = CORPS_DF.set_index("cps_code").to_dict(orient="index")
+def _sigles_depuis_table(df, col_code: str, col_sigle: str, defaut: dict) -> dict:
+    """Construit {sigle: code} depuis la colonne description d'une table
+    (classe.csv / echelon.csv). Les valeurs par défaut ne servent que si
+    le sigle n'est pas défini dans la table."""
+    res = dict(defaut)
+    if df is None or col_code not in df.columns or col_sigle not in df.columns:
+        return res
+    for _, row in df.iterrows():
+        sigle = row.get(col_sigle)
+        code = row.get(col_code)
+        if sigle is None or isinstance(sigle, float) or code is None or isinstance(code, float):
+            continue
+        sigle = " ".join(str(sigle).upper().split())
+        if sigle and sigle != "NON RENSEIGNE":
+            res[sigle] = str(code).strip()
+    return res
 
-if CCE_DF is not None:
-    for _, _row in CCE_DF.iterrows():
-        _cle = (str(_row["cce_cps_code"]), str(_row["cce_cls_code"]), str(_row["cce_ech_code"]))
-        DUREE_LOOKUP[_cle] = int(_row["cce_duree"])
+
+def _construire_index_tables(corps_df, classe_df, echelon_df, cce_df):
+    """Construit TOUS les index dérivés des tables dans des variables
+    locales, puis les publie d'un coup (remplacement atomique des globales)
+    — une vérification en cours ne voit jamais un état à moitié reconstruit."""
+    global CORPS_DF, CLASSE_DF, ECHELON_DF, CCE_DF
+    global CLS_LABEL_VERS_CODE, ECH_LABEL_VERS_CODE
+    global CPS_LIBELLE_VERS_CODES, _LIBELLES_TRIES, _LIBELLES_CORE_TRIES
+    global CPS_INFOS_PAR_CODE, DUREE_LOOKUP
+
+    libelle_vers_codes, libelles, libelles_core, infos, durees = {}, [], [], {}, {}
+
+    if corps_df is not None:
+        for _, _row in corps_df.iterrows():
+            for _lib in (_row.get("cps_libelle"), _row.get("cps_libelle_singulier")):
+                _cle = _normaliser_ref(_lib)
+                if _cle and len(_cle) >= 5:
+                    libelle_vers_codes.setdefault(_cle, []).append(_row["cps_code"])
+                    libelles.append((_cle, _row["cps_code"], _row.get("cps_typecorps_code")))
+                    _cle_core = _forme_reduite_corps(_cle)
+                    # Seuil de 8 caractères (≥ 2 mots porteurs de sens en
+                    # général) pour éviter qu'une forme réduite trop courte et
+                    # trop générique ne matche n'importe quoi.
+                    if _cle_core and len(_cle_core) >= 8 and _cle_core != _cle:
+                        libelles_core.append((_cle_core, _row["cps_code"], _row.get("cps_typecorps_code")))
+        libelles = sorted(set(libelles), key=lambda x: -len(x[0]))
+        libelles_core = sorted(set(libelles_core), key=lambda x: -len(x[0]))
+        infos = corps_df.drop_duplicates("cps_code", keep="last").set_index("cps_code").to_dict(orient="index")
+
+    if cce_df is not None:
+        for _, _row in cce_df.iterrows():
+            try:
+                _cle = (str(_row["cce_cps_code"]).strip(), str(_row["cce_cls_code"]).strip(), str(_row["cce_ech_code"]).strip())
+                durees[_cle] = int(float(_row["cce_duree"]))
+            except (TypeError, ValueError, KeyError):
+                # Une ligne mal saisie ne doit jamais empêcher le chargement
+                # du reste de la table.
+                continue
+
+    cls_map = _sigles_depuis_table(classe_df, "cls_code", "cls_description", _CLS_LABEL_VERS_CODE_DEFAUT)
+    ech_map = _sigles_depuis_table(echelon_df, "ech_code", "ech_description", _ECH_LABEL_VERS_CODE_DEFAUT)
+
+    CORPS_DF, CLASSE_DF, ECHELON_DF, CCE_DF = corps_df, classe_df, echelon_df, cce_df
+    CPS_LIBELLE_VERS_CODES, _LIBELLES_TRIES, _LIBELLES_CORE_TRIES = libelle_vers_codes, libelles, libelles_core
+    CPS_INFOS_PAR_CODE, DUREE_LOOKUP = infos, durees
+    CLS_LABEL_VERS_CODE, ECH_LABEL_VERS_CODE = cls_map, ech_map
 
 
 # ═══════════════════════════════════════════════════════════
@@ -656,7 +708,12 @@ def _charger_references_par_corps():
     try:
         with open(chemin, "r", encoding="utf-8") as f:
             contenu = f.read()
-        blocs = contenu.split("=== CORPS")[1:]
+        # Découpage sur la ligne de titre "=== CORPS : <LIBELLÉ> ===". Le
+        # motif tolère aussi un tout premier bloc dont le préfixe "=== CORPS"
+        # aurait été tronqué (cas du fichier d'origine), qui était
+        # auparavant ignoré.
+        morceaux = re.split(r"^(?:=== CORPS)?\s*:\s*.+?\s*===\s*$", contenu.replace("\r\n", "\n"), flags=re.MULTILINE)
+        blocs = morceaux[1:]
         for bloc in blocs:
             m_code = re.search(r"Code\s*:\s*(\S+)", bloc)
             m_type = re.search(r"Type\s*:\s*(\S+)", bloc)
@@ -682,7 +739,75 @@ def _charger_references_par_corps():
     return resultats
 
 
-REFERENCES_PAR_CODE_CORPS = _charger_references_par_corps()
+REFERENCES_PAR_CODE_CORPS = {}
+
+
+# ═══════════════════════════════════════════════════════════
+#  RECHARGEMENT À CHAUD DU RÉFÉRENTIEL
+#
+#  Les tables (corps / classe / échelon / durées) et les références de
+#  visa par corps sont modifiables depuis l'interface d'administration.
+#  Avant chaque utilisation, on compare la « signature » des fichiers
+#  (date de modification + taille) à celle du dernier chargement : si un
+#  fichier a changé, on recharge TOUT le référentiel. Coût en temps normal :
+#  quelques appels système stat(), négligeable. Aucun redémarrage de l'API
+#  n'est nécessaire après une modification faite dans l'interface admin.
+# ═══════════════════════════════════════════════════════════
+
+_FICHIERS_REFERENTIEL = (
+    "corps.csv", "classe.csv", "echelon.csv", "corps_classe_echelon.csv",
+    "corps_references_RAG.txt",
+)
+_SIGNATURE_REFERENTIEL = None
+_DATE_CHARGEMENT_REFERENTIEL = None
+_VERROU_REFERENTIEL = threading.Lock()
+
+
+def _signature_referentiel():
+    from app.services.referentiel_service import signature_fichiers
+    return signature_fichiers(_FICHIERS_REFERENTIEL, get_settings().data_dir)
+
+
+def recharger_referentiel_si_modifie(force: bool = False) -> bool:
+    """Recharge les tables de référence si l'un des fichiers a changé
+    depuis le dernier chargement. Retourne True si un rechargement a eu lieu."""
+    global _SIGNATURE_REFERENTIEL, _DATE_CHARGEMENT_REFERENTIEL, REFERENCES_PAR_CODE_CORPS
+    signature = _signature_referentiel()
+    if not force and signature == _SIGNATURE_REFERENTIEL:
+        return False
+    with _VERROU_REFERENTIEL:
+        signature = _signature_referentiel()
+        if not force and signature == _SIGNATURE_REFERENTIEL:
+            return False  # un autre thread vient de recharger
+        if _SIGNATURE_REFERENTIEL is not None:
+            logger.info("🔄 Référentiel modifié (interface admin) — rechargement à chaud des tables...")
+        _construire_index_tables(*_charger_tables_reference())
+        REFERENCES_PAR_CODE_CORPS = _charger_references_par_corps()
+        _SIGNATURE_REFERENTIEL = signature
+        _DATE_CHARGEMENT_REFERENTIEL = datetime.now().isoformat(timespec="seconds")
+        return True
+
+
+def etat_referentiel() -> dict:
+    """État du référentiel tel que l'API le voit (endpoint /admin/referentiel)."""
+    recharger_referentiel_si_modifie()
+    return {
+        "date_dernier_chargement": _DATE_CHARGEMENT_REFERENTIEL,
+        "nb_corps": len(CPS_INFOS_PAR_CODE),
+        "nb_durees_avancement": len(DUREE_LOOKUP),
+        "nb_classes": 0 if CLASSE_DF is None else len(CLASSE_DF),
+        "nb_echelons": 0 if ECHELON_DF is None else len(ECHELON_DF),
+        "nb_corps_avec_references_visa": len(REFERENCES_PAR_CODE_CORPS),
+        "sigles_classes": CLS_LABEL_VERS_CODE,
+        "sigles_echelons": ECH_LABEL_VERS_CODE,
+        "fichiers": [
+            {"fichier": nom, "mtime_ns": mtime, "taille": taille}
+            for nom, mtime, taille in (_SIGNATURE_REFERENTIEL or ())
+        ],
+    }
+
+
+recharger_referentiel_si_modifie(force=True)
 
 _HIER_RE = re.compile(r'\b(AS|A1|A2|A3|B1|B2|B3|B4|C1|C2|C3|C4|D1|D2|D3|D4)\b')
 
@@ -725,6 +850,7 @@ def _meilleur_candidat(candidats, statut):
 
 
 def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
+    recharger_referentiel_si_modifie()
     if CORPS_DF is None:
         return None
     texte_norm_complet = _normaliser_ref(_pretraiter_texte_corps(acte_text))
@@ -832,6 +958,7 @@ def detecter_corps_depuis_texte(acte_text: str, statut: str = ""):
 
 
 def parser_grade_depart(grade_label: str):
+    recharger_referentiel_si_modifie()
     label = " ".join(str(grade_label).upper().split())
 
     if label.startswith("PPL") and "CEX" not in label:
@@ -853,6 +980,7 @@ def get_delai_reglementaire_v2(acte_text: str, statut: str, corps_texte_extrait:
     """Priorité à la table corps_classe_echelon.csv (source de vérité).
     Repli sur get_delai_reglementaire() (règles générales) si le corps
     n'y figure pas — dans ce cas confirme_par_table=False."""
+    recharger_referentiel_si_modifie()
     cps_code = detecter_corps_depuis_texte(acte_text, statut) or detecter_corps_depuis_texte(corps_texte_extrait or "", statut)
 
     if cps_code is not None:

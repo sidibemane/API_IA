@@ -23,21 +23,47 @@ _CHUNKS = []
 _TEXTES_CHUNKS = []
 _SOURCES_CHUNKS = []
 
+_FICHIERS_RAG = [
+    ("regles_metier_actes_RH_v7.txt", "regles_metier"),
+    ("corps_references_RAG.txt", "corps_references"),
+]
+_SIGNATURE_RAG = None
+
+
+def _signature_rag():
+    from app.services.referentiel_service import signature_fichiers
+    return signature_fichiers([n for n, _ in _FICHIERS_RAG], get_settings().data_dir)
+
 
 def initialiser_rag():
     """Initialise le pipeline RAG (tout en CPU)."""
-    global _MODELE_EMBED, _RERANKER, _INDEX_FAISS
+    global _MODELE_EMBED, _RERANKER
+    settings = get_settings()
+
+    _construire_index_rag()
+
+    # 5. Re-ranker (CPU)
+    if _RERANKER is None:
+        logger.info(f"Chargement re-ranker : {settings.model_reranker}")
+        _RERANKER = CrossEncoder(settings.model_reranker)
+
+    logger.info("✅ Pipeline RAG initialisé (CPU)")
+
+
+def _construire_index_rag():
+    """Découpe les textes et (re)calcule l'index FAISS. Les modèles déjà
+    chargés sont réutilisés : appelée à nouveau automatiquement quand un
+    texte est modifié depuis l'interface admin."""
+    global _MODELE_EMBED, _INDEX_FAISS, _SIGNATURE_RAG
     global _CHUNKS, _TEXTES_CHUNKS, _SOURCES_CHUNKS
 
     settings = get_settings()
     data_dir = settings.data_dir
+    signature = _signature_rag()
 
     # 1. Lecture des fichiers
     textes_bruts = []
-    for nom_fichier, source in [
-        ("regles_metier_actes_RH_v7.txt", "regles_metier"),
-        ("corps_references_RAG.txt", "corps_references"),
-    ]:
+    for nom_fichier, source in _FICHIERS_RAG:
         chemin = os.path.join(data_dir, nom_fichier)
         if os.path.exists(chemin):
             with open(chemin, "r", encoding="utf-8") as f:
@@ -53,28 +79,29 @@ def initialiser_rag():
         length_function=len,
     )
 
-    _CHUNKS = []
+    chunks = []
     for item in textes_bruts:
         morceaux = splitter.split_text(item["texte"])
         for morceau in morceaux:
             if len(morceau.strip()) >= 50:
-                _CHUNKS.append({
+                chunks.append({
                     "texte": morceau.strip(),
                     "source": item["source"],
-                    "index": len(_CHUNKS),
+                    "index": len(chunks),
                 })
 
-    _TEXTES_CHUNKS = [c["texte"] for c in _CHUNKS]
-    _SOURCES_CHUNKS = [c["source"] for c in _CHUNKS]
-    logger.info(f"  Total chunks : {len(_CHUNKS)}")
+    textes_chunks = [c["texte"] for c in chunks]
+    sources_chunks = [c["source"] for c in chunks]
+    logger.info(f"  Total chunks : {len(chunks)}")
 
     # 3. Embeddings (CPU — ~2-5 min la première fois)
-    logger.info(f"Chargement embeddings : {settings.model_embed}")
-    _MODELE_EMBED = SentenceTransformer(settings.model_embed)
+    if _MODELE_EMBED is None:
+        logger.info(f"Chargement embeddings : {settings.model_embed}")
+        _MODELE_EMBED = SentenceTransformer(settings.model_embed)
 
-    logger.info(f"Calcul embeddings pour {len(_TEXTES_CHUNKS)} chunks...")
+    logger.info(f"Calcul embeddings pour {len(textes_chunks)} chunks...")
     embeddings = _MODELE_EMBED.encode(
-        _TEXTES_CHUNKS,
+        textes_chunks,
         batch_size=16,       # Plus petit batch pour CPU
         show_progress_bar=True,
         normalize_embeddings=True,
@@ -84,21 +111,24 @@ def initialiser_rag():
     # 4. Index FAISS (CPU)
     import faiss
     dimension = embeddings.shape[1]
-    _INDEX_FAISS = faiss.IndexFlatIP(dimension)
-    _INDEX_FAISS.add(embeddings.astype("float32"))
-    logger.info(f"  Index FAISS : {_INDEX_FAISS.ntotal} vecteurs")
+    index = faiss.IndexFlatIP(dimension)
+    index.add(embeddings.astype("float32"))
+    logger.info(f"  Index FAISS : {index.ntotal} vecteurs")
 
-    # 5. Re-ranker (CPU)
-    logger.info(f"Chargement re-ranker : {settings.model_reranker}")
-    _RERANKER = CrossEncoder(settings.model_reranker)
-
-    logger.info("✅ Pipeline RAG initialisé (CPU)")
+    # Publication d'un coup (une recherche en cours garde l'ancien index)
+    _CHUNKS, _TEXTES_CHUNKS, _SOURCES_CHUNKS, _INDEX_FAISS = chunks, textes_chunks, sources_chunks, index
+    _SIGNATURE_RAG = signature
 
 
 def rechercher_chunks(question: str, top_k: int = 10) -> list[dict]:
     """Recherche FAISS + CrossEncoder (CPU)."""
-    if _INDEX_FAISS is None:
+    if _INDEX_FAISS is None or _RERANKER is None:
         initialiser_rag()
+    elif _signature_rag() != _SIGNATURE_RAG:
+        # Un texte (règles métier / références) a été modifié depuis
+        # l'interface admin : on recalcule l'index avant de répondre.
+        logger.info("🔄 Textes du RAG modifiés — recalcul de l'index...")
+        _construire_index_rag()
 
     recall_k = min(top_k * 3, len(_TEXTES_CHUNKS))
     vecteur_question = _MODELE_EMBED.encode(

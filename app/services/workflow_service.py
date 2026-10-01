@@ -233,8 +233,11 @@ class MoteurValidationGIRAFE:
             logger.warning(f"Analyse visuelle en échec ({resultat['erreur']}) — résultat NON mis en cache, sera retenté au prochain appel.")
         return resultat
 
-    def initialiser_workflow(self, acte_text: str) -> dict:
-        type_str = detecter_type_acte(acte_text)
+    def initialiser_workflow(self, acte_text: str, nature: Optional[str] = None, type_acte=None) -> dict:
+        # nature / type_acte (facultatifs, envoyés par GIRAFE) : si fournis,
+        # le circuit est lu dans la table parametrage_type_acte_workflow.csv,
+        # modifiable depuis l'interface admin ; sinon repli par mots-clés.
+        type_str = detecter_type_acte(acte_text, nature=nature, type_acte=type_acte)
         self.type_acte_detecte = TypeActe(type_str)
         self.workflow_actuel = WORKFLOWS_CONFIG[self.type_acte_detecte]
         return {
