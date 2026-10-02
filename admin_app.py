@@ -30,6 +30,7 @@ Lancement :
 import json
 import os
 import sys
+import time
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from app.services import referentiel_service as ref  # noqa: E402
+from app.services import auth_service as auth  # noqa: E402
 
 # ═══════════════════════════════════════════════════════════
 #  CHEMINS — mêmes fichiers que ceux lus par l'API (app/config.py)
@@ -125,6 +127,13 @@ st.markdown(f"""
         font-weight: 600;
         padding: 0.5rem 1.2rem;
     }}
+    .stFormSubmitButton>button {{
+        background-color: {VERT} !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 6px;
+        font-weight: 600;
+    }}
     .stButton>button:hover {{
         background-color: {VERT_FONCE};
         color: white;
@@ -182,6 +191,71 @@ with col_titre:
 
 
 # ═══════════════════════════════════════════════════════════
+#  CONNEXION — accès réservé aux administrateurs
+#
+#  Comptes stockés dans comptes_admin.json (racine du projet, mots de passe
+#  hachés). Premier compte à créer sur le serveur :
+#      python gerer_comptes.py ajouter <identifiant>
+#  La session se ferme après ADMIN_SESSION_MINUTES minutes d'inactivité
+#  (60 par défaut), ou avec le bouton « Se déconnecter ».
+# ═══════════════════════════════════════════════════════════
+
+DUREE_SESSION_MINUTES = int(os.getenv("ADMIN_SESSION_MINUTES", "60"))
+
+
+def utilisateur_connecte():
+    u = st.session_state.get("utilisateur")
+    if not u:
+        return None
+    if time.time() - st.session_state.get("derniere_activite", 0) > DUREE_SESSION_MINUTES * 60:
+        st.session_state.pop("utilisateur", None)
+        st.session_state["message_connexion"] = "Votre session a expiré après une période d'inactivité. Reconnectez-vous."
+        return None
+    st.session_state["derniere_activite"] = time.time()
+    return u
+
+
+if not utilisateur_connecte():
+    # Pas de menu latéral tant que l'utilisateur n'est pas connecté
+    st.markdown(
+        "<style>[data-testid='stSidebar'], [data-testid='stSidebarCollapsedControl'] {display: none;}</style>",
+        unsafe_allow_html=True,
+    )
+    _, centre, _ = st.columns([1, 1.3, 1])
+    with centre:
+        st.subheader("Connexion administrateur")
+        if not auth.existe_au_moins_un_compte():
+            st.warning(
+                "Aucun compte administrateur n'existe encore. Créez le premier compte "
+                "sur le serveur, dans le dossier du projet :"
+            )
+            st.code("source venv/bin/activate\npython gerer_comptes.py ajouter admin", language="bash")
+            st.caption("Puis rechargez cette page.")
+            st.stop()
+        if st.session_state.get("message_connexion"):
+            st.info(st.session_state.pop("message_connexion"))
+        with st.form("formulaire_connexion"):
+            identifiant_saisi = st.text_input("Identifiant")
+            mot_de_passe_saisi = st.text_input("Mot de passe", type="password")
+            valider = st.form_submit_button("Se connecter", type="primary")
+        if valider:
+            try:
+                utilisateur = auth.authentifier(identifiant_saisi, mot_de_passe_saisi)
+            except PermissionError as e:
+                st.error(str(e))
+            else:
+                if utilisateur:
+                    st.session_state["utilisateur"] = utilisateur
+                    st.session_state["derniere_activite"] = time.time()
+                    st.rerun()
+                else:
+                    st.error("Identifiant ou mot de passe incorrect.")
+    st.stop()
+
+UTILISATEUR = st.session_state["utilisateur"]
+
+
+# ═══════════════════════════════════════════════════════════
 #  UTILITAIRES DE CHARGEMENT / SAUVEGARDE
 # ═══════════════════════════════════════════════════════════
 
@@ -219,7 +293,8 @@ def sauvegarder_base_agents(agents: list):
 
 
 def auteur_courant() -> str:
-    return (st.session_state.get("auteur") or "").strip() or "admin"
+    """Auteur inscrit dans le journal : l'administrateur connecté."""
+    return f"{UTILISATEUR['nom_complet']} ({UTILISATEUR['identifiant']})"
 
 
 def _url_api() -> str:
@@ -365,20 +440,21 @@ PAGE_TABLES = " Base de référence (tables)"
 PAGE_VISA = " Références visa par corps"
 PAGE_REGLES = " Règles métier (RAG)"
 PAGE_HISTORIQUE = " Historique & restauration"
-PAGE_AGENTS = " Base agents (secours)"
 PAGE_JSON = " Aperçu JSON brut"
+PAGE_COMPTES = " Comptes administrateurs"
 
 page = st.sidebar.radio(
     "Navigation",
-    [PAGE_CIRCUITS, PAGE_TABLES, PAGE_VISA, PAGE_REGLES, PAGE_HISTORIQUE, PAGE_AGENTS, PAGE_JSON],
+    [PAGE_CIRCUITS, PAGE_TABLES, PAGE_VISA, PAGE_REGLES, PAGE_HISTORIQUE, PAGE_AGENTS, PAGE_JSON, PAGE_COMPTES],
 )
 
 st.sidebar.markdown("---")
-st.sidebar.text_input(
-    "Votre nom (journal des modifications)",
-    key="auteur",
-    placeholder="ex : M. Diop — DGFP",
-)
+st.sidebar.markdown(f"Connecté : **{UTILISATEUR['nom_complet']}**  \n`{UTILISATEUR['identifiant']}`")
+if st.sidebar.button("Se déconnecter"):
+    for _cle in ("utilisateur", "derniere_activite"):
+        st.session_state.pop(_cle, None)
+    st.session_state["message_connexion"] = "Vous êtes déconnecté."
+    st.rerun()
 st.sidebar.caption(
     "Toute modification enregistrée ici s'applique **immédiatement** sur "
     "la prochaine vérification d'acte dans l'API — aucun redémarrage requis."
@@ -829,10 +905,24 @@ elif page == PAGE_VISA:
             st.caption(f"ℹ {a}")
     commentaire = st.text_input("Texte de référence / motif (facultatif)", key=f"visa_com_{cle_w}")
 
+    enregistrer_visa = False
     b1, b2 = st.columns([3, 2])
     with b1:
+        # Bouton toujours cliquable : un champ texte de Streamlit n'envoie sa
+        # valeur qu'à la sortie du champ (ou Ctrl+Entrée). Un bouton grisé
+        # tant que l'utilisateur n'a pas quitté le champ serait trompeur ; on
+        # vérifie donc au moment du clic.
         if st.button("Enregistrer" if code_original else "Ajouter ce corps", type="primary",
-                     disabled=not (modifie and autorise), key=f"visa_save_{cle_w}"):
+                     key=f"visa_save_{cle_w}"):
+            if vierge or not modifie:
+                st.info("Aucune modification détectée.")
+            elif erreurs:
+                st.error("Corrigez les erreurs ci-dessus avant d'enregistrer.")
+            elif not autorise:
+                st.warning("Cochez « J'ai lu les avertissements » ci-dessus, puis cliquez à nouveau sur le bouton.")
+            else:
+                enregistrer_visa = True
+        if enregistrer_visa:
             if code_original is None:
                 liste = corps_refs + [nouveau]
                 action = "ajout corps"
@@ -873,16 +963,22 @@ elif page == PAGE_REGLES:
     modifie = nouveau_texte != texte_actuel
     st.caption(f"{len(nouveau_texte):,} caractères".replace(",", " ") + (" — modifications non enregistrées" if modifie else ""))
     commentaire = st.text_input("Texte de référence / motif (facultatif)", key=f"regles_com_{v}")
+    st.caption("Après une modification, cliquez en dehors de la zone de texte (ou Ctrl + Entrée) pour que le compteur se mette à jour.")
     c1, c2 = st.columns([3, 1])
     with c1:
-        if st.button("Enregistrer les règles métier", type="primary", disabled=not modifie):
-            ref.sauvegarder_texte(nom_regles, nouveau_texte, auteur=auteur_courant(), commentaire=commentaire,
-                                  details={"nb_caracteres": len(nouveau_texte)})
-            _nouvelle_version("regles")
-            _flash("success", "Règles métier enregistrées — l'index de l'assistant sera recalculé à la prochaine question.")
-            st.rerun()
+        # Bouton toujours cliquable (voir la page Références visa) : le clic
+        # envoie d'abord le texte en cours de saisie, puis on vérifie.
+        if st.button("Enregistrer les règles métier", type="primary"):
+            if not modifie:
+                st.info("Aucune modification détectée dans le texte.")
+            else:
+                ref.sauvegarder_texte(nom_regles, nouveau_texte, auteur=auteur_courant(), commentaire=commentaire,
+                                      details={"nb_caracteres": len(nouveau_texte)})
+                _nouvelle_version("regles")
+                _flash("success", "Règles métier enregistrées — l'index de l'assistant sera recalculé à la prochaine question.")
+                st.rerun()
     with c2:
-        if st.button("Annuler", disabled=not modifie):
+        if st.button("Annuler"):
             _nouvelle_version("regles")
             st.rerun()
 
@@ -959,5 +1055,105 @@ elif page == PAGE_HISTORIQUE:
                 ref.restaurer_sauvegarde(fichier_r, choix_s, auteur=auteur_courant())
                 for k in ("visa", "regles", fichier_r):
                     _nouvelle_version(k)
-                _flash("success", f"{fichier_r} restauré — la version restaurée est active dès la prochaine vérification d'acte.")
+                _flash("success", f"{fichier_r} restauré  la version restaurée est active dès la prochaine vérification d'acte.")
                 st.rerun()
+
+
+
+# ═══════════════════════════════════════════════════════════
+#  PAGE 8 — COMPTES ADMINISTRATEURS
+# ═══════════════════════════════════════════════════════════
+
+elif page == PAGE_COMPTES:
+    st.subheader("Comptes administrateurs")
+    st.caption(
+        "Seules les personnes ayant un compte peuvent accéder à cette interface. "
+        "Le nom complet du compte est inscrit dans l'historique pour chaque modification."
+    )
+    comptes = auth.charger_comptes()
+    moi = UTILISATEUR["identifiant"]
+
+    st.dataframe(
+        pd.DataFrame([
+            {
+                "Identifiant": ident,
+                "Nom complet": c.get("nom_complet", ""),
+                "Créé le": (c.get("cree_le") or "").replace("T", " "),
+                "Créé par": c.get("cree_par", ""),
+                "Dernière connexion": (c.get("derniere_connexion") or "jamais").replace("T", " "),
+            }
+            for ident, c in comptes.items()
+        ]),
+        hide_index=True, **LARGEUR,
+    )
+
+    onglet_mdp, onglet_ajout, onglet_gerer = st.tabs(["Changer mon mot de passe", "Ajouter un compte", "Réinitialiser / supprimer un compte"])
+
+    with onglet_mdp:
+        with st.form("form_mon_mdp", clear_on_submit=True):
+            actuel = st.text_input("Mot de passe actuel", type="password")
+            nouveau = st.text_input("Nouveau mot de passe", type="password",
+                                    help=f"Au moins {auth.LONGUEUR_MIN_MOT_DE_PASSE} caractères, avec au moins une lettre et un chiffre.")
+            confirmation = st.text_input("Confirmer le nouveau mot de passe", type="password")
+            ok = st.form_submit_button("Changer mon mot de passe", type="primary")
+        if ok:
+            if not auth.verifier_mot_de_passe(actuel, comptes.get(moi, {}).get("mot_de_passe", "")):
+                st.error("Mot de passe actuel incorrect.")
+            elif nouveau != confirmation:
+                st.error("Les deux saisies du nouveau mot de passe ne correspondent pas.")
+            else:
+                try:
+                    auth.changer_mot_de_passe(moi, nouveau)
+                    st.success("Mot de passe modifié.")
+                except ValueError as e:
+                    st.error(str(e))
+
+    with onglet_ajout:
+        with st.form("form_ajout_compte", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            nouvel_ident = c1.text_input("Identifiant (pour se connecter)", placeholder="ex : mdiop")
+            nouveau_nom = c2.text_input("Nom complet (affiché dans l'historique)", placeholder="ex : Moussa Diop — DGFP")
+            mdp1 = st.text_input("Mot de passe provisoire", type="password",
+                                 help=f"Au moins {auth.LONGUEUR_MIN_MOT_DE_PASSE} caractères, avec au moins une lettre et un chiffre.")
+            mdp2 = st.text_input("Confirmer le mot de passe", type="password")
+            ok = st.form_submit_button("Créer le compte", type="primary")
+        if ok:
+            if mdp1 != mdp2:
+                st.error("Les deux saisies du mot de passe ne correspondent pas.")
+            else:
+                try:
+                    auth.ajouter_compte(nouvel_ident, nouveau_nom, mdp1, cree_par=moi)
+                    _flash("success", f"Compte « {nouvel_ident.strip().lower()} » créé. Communiquez-lui son mot de passe provisoire ; il pourra le changer après connexion.")
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
+
+    with onglet_gerer:
+        autres = [i for i in comptes if i != moi]
+        if not autres:
+            st.caption("Aucun autre compte.")
+        else:
+            cible = st.selectbox("Compte", autres, format_func=lambda i: f"{i} — {comptes[i].get('nom_complet', '')}")
+            st.markdown("**Réinitialiser son mot de passe** (s'il l'a oublié)")
+            with st.form("form_reinit", clear_on_submit=True):
+                r1 = st.text_input("Nouveau mot de passe provisoire", type="password")
+                r2 = st.text_input("Confirmer", type="password")
+                ok_r = st.form_submit_button("Réinitialiser le mot de passe")
+            if ok_r:
+                if r1 != r2:
+                    st.error("Les deux saisies ne correspondent pas.")
+                else:
+                    try:
+                        auth.changer_mot_de_passe(cible, r1)
+                        st.success(f"Mot de passe de « {cible} » réinitialisé.")
+                    except ValueError as e:
+                        st.error(str(e))
+            st.markdown("**Supprimer ce compte**")
+            confirmer = st.checkbox(f"Confirmer la suppression du compte « {cible} »", key=f"conf_suppr_{cible}")
+            if st.button("Supprimer le compte", disabled=not confirmer):
+                try:
+                    auth.supprimer_compte(cible, demande_par=moi)
+                    _flash("success", f"Compte « {cible} » supprimé.")
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
