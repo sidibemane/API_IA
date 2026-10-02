@@ -440,6 +440,7 @@ PAGE_TABLES = " Base de référence (tables)"
 PAGE_VISA = " Références visa par corps"
 PAGE_REGLES = " Règles métier (RAG)"
 PAGE_HISTORIQUE = " Historique & restauration"
+PAGE_AGENTS = " Base agents (secours)"
 PAGE_JSON = " Aperçu JSON brut"
 PAGE_COMPTES = " Comptes administrateurs"
 
